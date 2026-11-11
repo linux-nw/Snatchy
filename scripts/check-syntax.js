@@ -1,8 +1,8 @@
 /**
  * Syntaxprüfung für alle CommonJS-Dateien unter src/ und tests/.
  *
- * src/renderer.js bleibt außen vor: die Datei enthält JSX und wird zur
- * Laufzeit von Babel im Browser übersetzt, `node --check` kann sie nicht lesen.
+ * src/renderer.js bleibt außen vor: die Datei enthält JSX und wird vorab
+ * von scripts/build-renderer.js (esbuild) übersetzt, `node --check` kann sie nicht lesen.
  */
 
 const { execFileSync } = require("node:child_process");
