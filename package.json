@@ -19,7 +19,8 @@
     "appId": "com.snatchy.downloader",
     "productName": "Snatchy",
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "assets/icons"
     },
     "files": [
       "src/**/*",
@@ -28,6 +29,7 @@
       "_ds_bundle.js"
     ],
     "win": {
+      "icon": "assets/icons/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -36,7 +38,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false
+      "perMachine": false,
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "installerHeaderIcon": "assets/icons/icon.ico"
     },
     "extraResources": [
       {
