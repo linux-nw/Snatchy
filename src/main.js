@@ -13,7 +13,7 @@ const { ResolveErrorCode, toResolveError } = require("./core/errors");
 const { downloadUrlOf } = require("./core/types");
 const { SessionStore } = require("./auth/SessionStore");
 const { createFolderPolicy } = require("./core/pathGuard");
-const { normalizeHttpUrl } = require("./core/urlGuard");
+const { normalizeHttpUrl, normalizeDownloadInput } = require("./core/urlGuard");
 const { fileURLToPath } = require("node:url");
 const {
   runDownloadCascade,
@@ -815,10 +815,12 @@ ipcMain.handle("download:start", async (event, options) => {
     return { ok: false, error: "Bitte eine URL eingeben." };
   }
 
-  // Nur http(s): verhindert lokale Pfade, file:-URLs und Optionen als Eingabe.
-  const safeUrl = normalizeHttpUrl(normalized.url);
+  // Erlaubt: http(s)-URLs und yt-dlp-Suchen im strengen Muster ytsearch[N]:Text
+  // (siehe src/core/urlGuard.js). Lokale Pfade, file:-URLs und Optionen als
+  // Eingabe werden abgelehnt; yt-dlp bekommt die Eingabe immer hinter "--".
+  const safeUrl = normalizeDownloadInput(normalized.url);
   if (!safeUrl) {
-    return { ok: false, error: "Nur http(s)-Links sind erlaubt." };
+    return { ok: false, error: "Nur http(s)-Links oder ytsearch:-Suchen sind erlaubt." };
   }
   normalized.url = safeUrl;
 
@@ -857,8 +859,8 @@ ipcMain.handle("download:start", async (event, options) => {
       return { ok: false };
     }
     // Kein Resolver zuständig: die Eingabe geht trotzdem an yt-dlp. Das deckt
-    // Sonderformen ab, die kein Resolver abbilden muss (ytsearch:, lokale
-    // Pfade) und hält das bisherige Verhalten exakt bei.
+    // Sonderformen ab, die kein Resolver abbilden muss (ytsearch:; lokale Pfade
+    // sind oben schon abgelehnt) und hält das bisherige Verhalten exakt bei.
     sendToRenderer("download:log", `[Auflösung] ${resolveError.code}: ${resolveError.message}`);
     media = { sourceUrl: normalized.url, mediaUrl: normalized.url, provider: "yt-dlp" };
   }
