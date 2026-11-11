@@ -3,6 +3,27 @@
    Steuert die React App und kommuniziert mit Electron Backend
    ============================================================ */
 
+// Einmalige Migration der localStorage-Schluessel von ytx-* auf snatchy-*.
+// Liest jeden alten Schluessel, speichert den Wert unter dem neuen Namen (ein
+// bereits vorhandener neuer Wert gewinnt) und loescht danach den alten.
+// TODO: Kann entfernt werden, sobald alle Installationen einmal gestartet wurden.
+(() => {
+  try {
+    const legacyKeys = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('ytx-')) legacyKeys.push(key);
+    }
+    legacyKeys.forEach((oldKey) => {
+      const newKey = 'snatchy-' + oldKey.slice('ytx-'.length);
+      if (localStorage.getItem(newKey) === null) {
+        localStorage.setItem(newKey, localStorage.getItem(oldKey));
+      }
+      localStorage.removeItem(oldKey);
+    });
+  } catch { /* localStorage nicht verfuegbar: nichts zu migrieren */ }
+})();
+
 // Backend API Bridge
 const getSnatchyAPI = () => {
   if (!window.snatchy) {
@@ -196,7 +217,7 @@ function VelaApp() {
   const [playlistMode, setPlaylistMode] = useState('single');
   const [downloads, setDownloads] = useState([]);
   const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ytx-history') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('snatchy-history') || '[]'); } catch { return []; }
   });
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState(null);
@@ -242,34 +263,34 @@ function VelaApp() {
   // Initialisierung
   useEffect(() => {
     const init = async () => {
-      const savedTheme = localStorage.getItem('ytx-theme') || 'dark';
+      const savedTheme = localStorage.getItem('snatchy-theme') || 'dark';
       setTheme(savedTheme);
       document.body.dataset.theme = savedTheme;
 
-      const savedAuto = localStorage.getItem('ytx-auto-start');
+      const savedAuto = localStorage.getItem('snatchy-auto-start');
       if (savedAuto !== null) setAutoStart(savedAuto === 'true');
-      const savedNotif = localStorage.getItem('ytx-notifications');
+      const savedNotif = localStorage.getItem('snatchy-notifications');
       if (savedNotif !== null) setNotifications(savedNotif === 'true');
-      const savedOpenAfter = localStorage.getItem('ytx-open-after');
+      const savedOpenAfter = localStorage.getItem('snatchy-open-after');
       if (savedOpenAfter !== null) setOpenAfter(savedOpenAfter === 'true');
-      const savedOpenFileAfter = localStorage.getItem('ytx-open-file-after');
+      const savedOpenFileAfter = localStorage.getItem('snatchy-open-file-after');
       if (savedOpenFileAfter !== null) setOpenFileAfter(savedOpenFileAfter === 'true');
-      const savedEncoding = localStorage.getItem('ytx-encoding');
+      const savedEncoding = localStorage.getItem('snatchy-encoding');
       if (savedEncoding) setEncoding(savedEncoding);
-      const savedCookies = localStorage.getItem('ytx-cookies-browser');
+      const savedCookies = localStorage.getItem('snatchy-cookies-browser');
       if (savedCookies) setCookiesBrowser(savedCookies);
-      const savedPw = localStorage.getItem('ytx-playwright-fallback');
+      const savedPw = localStorage.getItem('snatchy-playwright-fallback');
       if (savedPw !== null) setPlaywrightFallback(savedPw === 'true');
-      const savedCoverArt = localStorage.getItem('ytx-cover-art');
+      const savedCoverArt = localStorage.getItem('snatchy-cover-art');
       if (savedCoverArt) setCoverArt(savedCoverArt);
-      const savedModel = localStorage.getItem('ytx-whisper-model');
+      const savedModel = localStorage.getItem('snatchy-whisper-model');
       if (savedModel) setWhisperModel(savedModel);
-      const savedLang = localStorage.getItem('ytx-transcript-lang');
+      const savedLang = localStorage.getItem('snatchy-transcript-lang');
       if (savedLang) setTranscriptLang(savedLang);
 
       try {
         const state = await snatchy.getState();
-        const savedFolder = localStorage.getItem('ytx-output-folder');
+        const savedFolder = localStorage.getItem('snatchy-output-folder');
         if (savedFolder) {
           setFolder(savedFolder);
         } else {
@@ -289,23 +310,23 @@ function VelaApp() {
   // Theme anwenden
   useEffect(() => {
     document.body.dataset.theme = theme;
-    localStorage.setItem('ytx-theme', theme);
+    localStorage.setItem('snatchy-theme', theme);
     snatchy.setTheme(theme);
   }, [theme, snatchy]);
 
   // Verhalten-Einstellungen persistieren
-  useEffect(() => { if (folder) localStorage.setItem('ytx-output-folder', folder); }, [folder]);
-  useEffect(() => { localStorage.setItem('ytx-auto-start', String(autoStart)); }, [autoStart]);
-  useEffect(() => { localStorage.setItem('ytx-notifications', String(notifications)); }, [notifications]);
-  useEffect(() => { localStorage.setItem('ytx-open-after', String(openAfter)); }, [openAfter]);
-  useEffect(() => { localStorage.setItem('ytx-open-file-after', String(openFileAfter)); }, [openFileAfter]);
-  useEffect(() => { localStorage.setItem('ytx-encoding', encoding); }, [encoding]);
-  useEffect(() => { localStorage.setItem('ytx-cookies-browser', cookiesBrowser); }, [cookiesBrowser]);
-  useEffect(() => { localStorage.setItem('ytx-playwright-fallback', String(playwrightFallback)); }, [playwrightFallback]);
-  useEffect(() => { localStorage.setItem('ytx-cover-art', coverArt); }, [coverArt]);
-  useEffect(() => { localStorage.setItem('ytx-whisper-model', whisperModel); }, [whisperModel]);
-  useEffect(() => { localStorage.setItem('ytx-transcript-lang', transcriptLang); }, [transcriptLang]);
-  useEffect(() => { localStorage.setItem('ytx-history', JSON.stringify(history)); }, [history]);
+  useEffect(() => { if (folder) localStorage.setItem('snatchy-output-folder', folder); }, [folder]);
+  useEffect(() => { localStorage.setItem('snatchy-auto-start', String(autoStart)); }, [autoStart]);
+  useEffect(() => { localStorage.setItem('snatchy-notifications', String(notifications)); }, [notifications]);
+  useEffect(() => { localStorage.setItem('snatchy-open-after', String(openAfter)); }, [openAfter]);
+  useEffect(() => { localStorage.setItem('snatchy-open-file-after', String(openFileAfter)); }, [openFileAfter]);
+  useEffect(() => { localStorage.setItem('snatchy-encoding', encoding); }, [encoding]);
+  useEffect(() => { localStorage.setItem('snatchy-cookies-browser', cookiesBrowser); }, [cookiesBrowser]);
+  useEffect(() => { localStorage.setItem('snatchy-playwright-fallback', String(playwrightFallback)); }, [playwrightFallback]);
+  useEffect(() => { localStorage.setItem('snatchy-cover-art', coverArt); }, [coverArt]);
+  useEffect(() => { localStorage.setItem('snatchy-whisper-model', whisperModel); }, [whisperModel]);
+  useEffect(() => { localStorage.setItem('snatchy-transcript-lang', transcriptLang); }, [transcriptLang]);
+  useEffect(() => { localStorage.setItem('snatchy-history', JSON.stringify(history)); }, [history]);
 
   // Format automatisch an die eingefügte URL anpassen, damit keine unsinnige
   // Kombination (z. B. Podcast-Format bei einem YouTube-Link) stehen bleibt.
