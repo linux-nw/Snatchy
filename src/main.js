@@ -86,6 +86,7 @@ const createWindow = () => {
     minWidth: 980,
     minHeight: 680,
     backgroundColor: "#0a0e14",
+    icon: path.join(__dirname, "..", "assets", "icons", "icon.ico"),
     title: "Snatchy",
     titleBarStyle: "hidden",
     frame: false,
