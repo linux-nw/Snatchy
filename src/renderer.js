@@ -1,5 +1,5 @@
 /* ============================================================
-   YTX Downloader - Renderer Process
+   Snatchy - Renderer Process
    Steuert die React App und kommuniziert mit Electron Backend
    ============================================================ */
 
@@ -1155,7 +1155,7 @@ function VelaApp() {
           <path d="M7.5 10.5 12 15l4.5-4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
         </svg>
-        <span className="tb-name">YTX Downloader</span>
+        <span className="tb-name">Snatchy</span>
       </div>
       <div className="tb-space" />
       <div className="tb-wc">

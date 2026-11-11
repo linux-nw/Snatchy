@@ -58,7 +58,7 @@ const SOURCES = [
 ];
 
 const ghHeaders = () => {
-  const h = { "User-Agent": "ytx-downloader-build", Accept: "application/vnd.github+json" };
+  const h = { "User-Agent": "snatchy-build", Accept: "application/vnd.github+json" };
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   if (token) h.Authorization = `Bearer ${token}`;
   return h;
@@ -77,7 +77,7 @@ const getAsset = async ({ repo, tag, asset }) => {
 };
 
 const download = async (url, dest) => {
-  const res = await fetch(url, { headers: { "User-Agent": "ytx-downloader-build" }, redirect: "follow" });
+  const res = await fetch(url, { headers: { "User-Agent": "snatchy-build" }, redirect: "follow" });
   if (!res.ok) throw new Error(`Download ${res.status}: ${url}`);
   fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
 };
@@ -89,8 +89,8 @@ const extractZip = (zip, dest) => {
   fs.mkdirSync(dest, { recursive: true });
   const r = spawnSync("powershell.exe", [
     "-NoProfile", "-NonInteractive", "-Command",
-    "Expand-Archive -LiteralPath $env:YTX_ZIP -DestinationPath $env:YTX_DEST -Force"
-  ], { stdio: "inherit", env: { ...process.env, YTX_ZIP: zip, YTX_DEST: dest } });
+    "Expand-Archive -LiteralPath $env:SNATCHY_ZIP -DestinationPath $env:SNATCHY_DEST -Force"
+  ], { stdio: "inherit", env: { ...process.env, SNATCHY_ZIP: zip, SNATCHY_DEST: dest } });
   if (r.status !== 0) throw new Error(`Entpacken fehlgeschlagen: ${zip}`);
 };
 

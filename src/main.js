@@ -59,7 +59,7 @@ const createWindow = () => {
     minWidth: 980,
     minHeight: 680,
     backgroundColor: "#0a0e14",
-    title: "YTX Downloader",
+    title: "Snatchy",
     titleBarStyle: "hidden",
     frame: false,
     webPreferences: {
@@ -77,7 +77,7 @@ const createWindow = () => {
 app.whenReady().then(() => {
   // Wichtig für zuverlässige Windows-Benachrichtigungen (sonst erscheinen sie ggf. nicht)
   if (process.platform === "win32") {
-    app.setAppUserModelId("com.ytx.downloader");
+    app.setAppUserModelId("com.snatchy.downloader");
   }
   createWindow();
 
@@ -85,7 +85,7 @@ app.whenReady().then(() => {
   getDependencyStatus().then((deps) => {
     if (!deps.impersonateAvailable) {
       console.warn(
-        "[YTX] Browser-Impersonation nicht verfügbar (curl_cffi fehlt).\n" +
+        "[Snatchy] Browser-Impersonation nicht verfügbar (curl_cffi fehlt).\n" +
         "      Seiten wie Pornhub senden HTTP 410 ohne Impersonation.\n" +
         "      Lösung: pip install -U \"yt-dlp[default,curl-cffi]\""
       );
@@ -617,7 +617,7 @@ const runTranscript = async (normalized, deps) => {
   }
   if (cancelRequested) return { ok: false };
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ytx-trans-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "snatchy-trans-"));
   try {
     // Audio über die bestehende Download-Pipeline laden (liefert echten Fortschritt).
     log("Lade Audiospur für die Transkription …");

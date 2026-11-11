@@ -92,12 +92,12 @@ test("der ResolveContext trennt Auth von den Resolvern", () => {
   const context = createResolveContext({
     auth: { type: "cookies", cookiesFromBrowser: "chrome" },
     headers: { "X-Test": "1", Cookie: "sid=geheim" },
-    userAgent: "YTX/1.0"
+    userAgent: "Snatchy/1.0"
   });
 
   assert.equal(context.auth.type, "cookies");
   assert.equal(context.headers["x-test"], "1");
-  assert.equal(context.userAgent, "YTX/1.0");
+  assert.equal(context.userAgent, "Snatchy/1.0");
 
   const beschreibung = JSON.stringify(describeContext(context));
   assert.match(beschreibung, /"cookie"/, "Header-Namen bleiben sichtbar");
@@ -116,10 +116,10 @@ test("ein abgebrochener Context meldet sich sofort", () => {
 test("context.fetch ergänzt die Header des Contexts", async () => {
   const gesehen = [];
   const context = createResolveContext({
-    headers: { "user-agent": "YTX/1.0" },
+    headers: { "user-agent": "Snatchy/1.0" },
     services: { http: async (url, init) => { gesehen.push({ url, init }); return { ok: true }; } }
   });
   await context.fetch("https://example.com", { headers: { Accept: "application/rss+xml" } });
-  assert.equal(gesehen[0].init.headers["user-agent"], "YTX/1.0");
+  assert.equal(gesehen[0].init.headers["user-agent"], "Snatchy/1.0");
   assert.equal(gesehen[0].init.headers.accept, "application/rss+xml");
 });
