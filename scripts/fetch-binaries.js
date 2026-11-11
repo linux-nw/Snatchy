@@ -1,9 +1,21 @@
 // Lädt die externen Programme, die die App braucht, nach vendor/bin:
 // yt-dlp, ffmpeg + ffprobe, deno (JS-Runtime für YouTube) und aria2c.
 // electron-builder packt den Ordner über "extraResources" in den Installer,
-// main.js sucht dort zuerst. Jede Datei wird per SHA-256 geprüft.
+// main.js sucht dort zuerst.
 //
-// Aufruf: node scripts/fetch-binaries.js [--force]
+// Version UND SHA-256 jeder Datei sind hier fest hinterlegt. Der Download kommt
+// über die feste Release-URL, die Prüfsumme stammt nicht aus der Antwort des
+// Servers, sondern aus diesem Repository. Ändert sich eine Datei (oder ein
+// Release wird manipuliert), bricht der Build ab.
+//
+// Aufruf:
+//   node scripts/fetch-binaries.js [--force]   Programme laden (--force ersetzt vorhandene)
+//   node scripts/fetch-binaries.js --show-latest   neueste Versionen samt Prüfsummen anzeigen,
+//                                                  zum Aktualisieren der festen Werte unten
+//
+// Neue Version eintragen: --show-latest ausführen, die Prüfsumme gegen die vom
+// Hersteller veröffentlichte Prüfsummen-Datei (yt-dlp: SHA2-256SUMS, deno:
+// *.sha256sum, FFmpeg-Builds: checksums.sha256) prüfen und tag/digest/asset ersetzen.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -14,24 +26,31 @@ const ROOT = path.join(__dirname, "..");
 const BIN_DIR = path.join(ROOT, "vendor", "bin");
 const TMP_DIR = path.join(ROOT, "vendor", ".download");
 const FORCE = process.argv.includes("--force");
+const SHOW_LATEST = process.argv.includes("--show-latest");
 
-// "digest: null" = Digest aus der GitHub-Release-API übernehmen.
-// aria2 hat keinen API-Digest, daher fest hinterlegt (Version ist gepinnt).
+// Festes Release (tag), feste Datei (asset), feste Prüfsumme (digest).
+// Die Prüfsummen wurden gegen die Hersteller-Prüfsummendateien gegengeprüft:
+//   yt-dlp  2026.10.26  SHA2-256SUMS der Release
+//   deno    v2.9.8      deno-x86_64-pc-windows-msvc.zip.sha256sum der Release
+//   ffmpeg  autobuild-2026-11-10-20-59  checksums.sha256 der Release
+//   aria2   release-1.37.0  (keine Prüfsummen-Datei; Wert selbst berechnet)
+// Hinweis: FFmpeg-Builds löschen alte datierte Releases nach einiger Zeit. Fehlt der
+// Tag (HTTP 404), mit --show-latest einen aktuellen Tag samt Prüfsumme eintragen.
 const SOURCES = [
   {
     name: "yt-dlp",
     repo: "yt-dlp/yt-dlp",
-    tag: "latest",
+    tag: "2026.10.26",
     asset: "yt-dlp.exe",
-    digest: null,
+    digest: "sha256:f5389d3698ecde4ef06f4e6b1ce0294fe9ac1396228c8990b8d3416d6d177a7d",
     files: [{ from: "yt-dlp.exe", to: "yt-dlp.exe" }]
   },
   {
     name: "ffmpeg",
     repo: "yt-dlp/FFmpeg-Builds",
-    tag: "latest",
-    asset: "ffmpeg-master-latest-win64-gpl-shared.zip",
-    digest: null,
+    tag: "autobuild-2026-11-10-20-59",
+    asset: "ffmpeg-N-128757-g4b42530309-win64-gpl-shared.zip",
+    digest: "sha256:c780c81afa60bd79545e6391d383ee5142806d754c96f487c4eeec344841eb48",
     // Shared-Build: ffmpeg/ffprobe sind klein, die Codecs liegen in den DLLs.
     files: [
       { from: "*/bin/ffmpeg.exe", to: "ffmpeg.exe" },
@@ -42,9 +61,9 @@ const SOURCES = [
   {
     name: "deno",
     repo: "denoland/deno",
-    tag: "latest",
+    tag: "v2.9.8",
     asset: "deno-x86_64-pc-windows-msvc.zip",
-    digest: null,
+    digest: "sha256:cba84b26e0df5ae7f74fc66b86a95b866872a86292ebd84fa1e959927edd93bf",
     files: [{ from: "deno.exe", to: "deno.exe" }]
   },
   {
@@ -57,24 +76,8 @@ const SOURCES = [
   }
 ];
 
-const ghHeaders = () => {
-  const h = { "User-Agent": "snatchy-build", Accept: "application/vnd.github+json" };
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
-};
-
-const getAsset = async ({ repo, tag, asset }) => {
-  const url = tag === "latest"
-    ? `https://api.github.com/repos/${repo}/releases/latest`
-    : `https://api.github.com/repos/${repo}/releases/tags/${tag}`;
-  const res = await fetch(url, { headers: ghHeaders() });
-  if (!res.ok) throw new Error(`GitHub-API ${res.status} für ${repo}@${tag}`);
-  const release = await res.json();
-  const found = release.assets.find((a) => a.name === asset);
-  if (!found) throw new Error(`Asset ${asset} nicht in ${repo}@${release.tag_name}`);
-  return { url: found.browser_download_url, digest: found.digest || null, version: release.tag_name };
-};
+const releaseUrl = ({ repo, tag, asset }) =>
+  `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(asset)}`;
 
 const download = async (url, dest) => {
   const res = await fetch(url, { headers: { "User-Agent": "snatchy-build" }, redirect: "follow" });
@@ -115,19 +118,21 @@ const globFiles = (base, pattern) => {
 const fetchSource = async (src) => {
   const targets = src.files.filter((f) => f.to !== ".").map((f) => path.join(BIN_DIR, f.to));
   if (!FORCE && targets.every((t) => fs.existsSync(t))) {
-    console.log(`[${src.name}] vorhanden, übersprungen (--force zum Aktualisieren)`);
+    console.log(`[${src.name}] vorhanden, übersprungen (--force zum Ersetzen)`);
     return;
   }
 
-  const info = await getAsset(src);
-  const expected = (src.digest || info.digest || "").replace(/^sha256:/, "");
-  if (!expected) throw new Error(`[${src.name}] keine Prüfsumme verfügbar, Abbruch`);
+  const expected = String(src.digest || "").replace(/^sha256:/, "").toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(expected)) throw new Error(`[${src.name}] keine feste Prüfsumme hinterlegt, Abbruch`);
 
   const file = path.join(TMP_DIR, src.asset);
-  console.log(`[${src.name}] lade ${info.version}: ${src.asset}`);
-  await download(info.url, file);
+  console.log(`[${src.name}] lade ${src.tag}: ${src.asset}`);
+  await download(releaseUrl(src), file);
   const actual = sha256(file);
-  if (actual !== expected) throw new Error(`[${src.name}] SHA-256 stimmt nicht: ${actual} != ${expected}`);
+  if (actual !== expected) {
+    fs.rmSync(file, { force: true });
+    throw new Error(`[${src.name}] SHA-256 stimmt nicht: ${actual} != ${expected}`);
+  }
 
   const isZip = src.asset.toLowerCase().endsWith(".zip");
   const sourceDir = isZip ? path.join(TMP_DIR, `${src.name}-x`) : TMP_DIR;
@@ -144,7 +149,36 @@ const fetchSource = async (src) => {
   console.log(`[${src.name}] ok`);
 };
 
+// Hilfsmodus: zeigt die neuesten Versionen der Quellen mit der Prüfsumme der GitHub-API.
+// Diese Werte NICHT blind übernehmen, sondern mit der Prüfsummen-Datei des Herstellers vergleichen.
+const showLatest = async () => {
+  const headers = { "User-Agent": "snatchy-build", Accept: "application/vnd.github+json" };
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  for (const src of SOURCES.filter((s) => s.name !== "aria2")) {
+    // FFmpeg-Builds: "latest" ist ein beweglicher Tag, gepinnt wird ein datierter autobuild-Tag.
+    const isFfmpeg = src.name === "ffmpeg";
+    const res = await fetch(
+      `https://api.github.com/repos/${src.repo}/releases${isFfmpeg ? "?per_page=10" : "/latest"}`,
+      { headers }
+    );
+    if (!res.ok) { console.log(`[${src.name}] GitHub-API ${res.status}`); continue; }
+    const data = await res.json();
+    const release = isFfmpeg ? data.find((r) => /^autobuild-/.test(r.tag_name)) : data;
+    if (!release) { console.log(`[${src.name}] kein datierter Release gefunden`); continue; }
+    const nameRe = src.name === "ffmpeg" ? /win64-gpl-shared\.zip$/ : null;
+    const asset = release.assets.find((a) => (nameRe ? nameRe.test(a.name) && !/master-latest/.test(a.name) : a.name === src.asset));
+    console.log(`[${src.name}] aktuell: ${release.tag_name}${asset ? `  asset=${asset.name}  digest=${asset.digest || "(keiner)"}` : "  (Asset nicht gefunden)"}`);
+    console.log(`           aktuell eingetragen: ${src.tag}  ${src.digest}`);
+  }
+  console.log("Hinweis FFmpeg: für einen datierten Tag (autobuild-...) die Release-Liste von yt-dlp/FFmpeg-Builds ansehen; \"latest\" ändert sich täglich.");
+};
+
 const main = async () => {
+  if (SHOW_LATEST) {
+    await showLatest();
+    return;
+  }
   if (process.platform !== "win32") {
     console.log("fetch-binaries: nur für Windows-Builds nötig, übersprungen.");
     return;
