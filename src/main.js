@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, session, shell } = require("electron");
 const { spawn } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
@@ -12,6 +12,9 @@ const { createLogger } = require("./core/logger");
 const { ResolveErrorCode, toResolveError } = require("./core/errors");
 const { downloadUrlOf } = require("./core/types");
 const { SessionStore } = require("./auth/SessionStore");
+const { createFolderPolicy } = require("./core/pathGuard");
+const { normalizeHttpUrl } = require("./core/urlGuard");
+const { fileURLToPath } = require("node:url");
 const {
   runDownloadCascade,
   buildFailureMessage,
@@ -94,9 +97,24 @@ const createWindow = () => {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: true
     }
   });
+
+  // Navigation absichern: das Fenster zeigt nur die lokale App-Seite. Fremde
+  // Navigation wird blockiert, externe http(s)-Links oeffnen im System-Browser.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalSafe(url);
+    return { action: "deny" };
+  });
+  const blockForeignNavigation = (event, url) => {
+    if (isAppUrl(url)) return;
+    event.preventDefault();
+    openExternalSafe(url);
+  };
+  mainWindow.webContents.on("will-navigate", blockForeignNavigation);
+  mainWindow.webContents.on("will-redirect", blockForeignNavigation);
+  mainWindow.webContents.on("will-attach-webview", (event) => event.preventDefault());
 
   // Lade die neue Vela React App
   mainWindow.loadFile(path.join(__dirname, "index.html"));
@@ -107,6 +125,11 @@ app.whenReady().then(() => {
   if (process.platform === "win32") {
     app.setAppUserModelId("com.snatchy.downloader");
   }
+  // Berechtigungen: nur Benachrichtigungen (Download fertig) sind erlaubt.
+  const allowNotificationsOnly = (_contents, permission, callback) => callback(permission === "notifications");
+  session.defaultSession.setPermissionRequestHandler(allowNotificationsOnly);
+  session.defaultSession.setPermissionCheckHandler((_contents, permission) => permission === "notifications");
+
   createWindow();
 
   // Dep-Cache vorab befüllen; warnen wenn curl_cffi fehlt (Impersonation nicht nutzbar).
@@ -142,6 +165,33 @@ const sendToRenderer = (channel, payload) => {
 };
 
 const getDefaultDownloadFolder = () => app.getPath("downloads");
+
+// --- Sicherheitshilfen fuer Navigation und IPC -------------------------------
+const APP_PAGE = path.resolve(__dirname, "index.html");
+const isAppUrl = (url) => {
+  try {
+    return path.resolve(fileURLToPath(url)).toLowerCase() === APP_PAGE.toLowerCase();
+  } catch {
+    return false;
+  }
+};
+// Nur Aufrufe aus der eigenen App-Seite werden bedient.
+const fromApp = (event) => !!(event && event.senderFrame && isAppUrl(event.senderFrame.url));
+const NOT_ALLOWED = { ok: false, error: "Nicht erlaubter Absender." };
+const openExternalSafe = (url) => {
+  const safe = normalizeHttpUrl(url);
+  if (safe) shell.openExternal(safe);
+};
+let folderPolicy = null;
+const getFolderPolicy = () => {
+  if (!folderPolicy) {
+    folderPolicy = createFolderPolicy({
+      defaultFolder: getDefaultDownloadFolder(),
+      storeFile: path.join(app.getPath("userData"), "allowed-folders.json")
+    });
+  }
+  return folderPolicy;
+};
 
 // Struktur-Logger für die Auflösung: schreibt zusätzlich jede Zeile in das
 // Log-Fenster der App. Cookies/Tokens werden im Logger selbst entfernt.
@@ -712,7 +762,8 @@ ipcMain.handle("app:set-theme", (_event, theme) => {
 });
 
 // Folder selection
-ipcMain.handle("dialog:select-folder", async () => {
+ipcMain.handle("dialog:select-folder", async (event) => {
+  if (!fromApp(event)) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
     title: "Download-Ordner auswählen",
     defaultPath: getDefaultDownloadFolder(),
@@ -723,11 +774,20 @@ ipcMain.handle("dialog:select-folder", async () => {
     return null;
   }
 
+  // Gewaehlte Ordner werden freigegeben: nur dort duerfen Dateien geoeffnet,
+  // geloescht und Downloads abgelegt werden (siehe src/core/pathGuard.js).
+  const freigabe = getFolderPolicy().allow(result.filePaths[0]);
+  if (!freigabe.ok) {
+    dialog.showErrorBox("Ordner nicht erlaubt", freigabe.error);
+    return null;
+  }
   return result.filePaths[0];
 });
 
 // Download start
-ipcMain.handle("download:start", async (_event, options) => {
+ipcMain.handle("download:start", async (event, options) => {
+  if (!fromApp(event)) return NOT_ALLOWED;
+  options = options || {};
   if (activeDownload) {
     return { ok: false, error: "Es läuft bereits ein Download." };
   }
@@ -755,6 +815,19 @@ ipcMain.handle("download:start", async (_event, options) => {
     return { ok: false, error: "Bitte eine URL eingeben." };
   }
 
+  // Nur http(s): verhindert lokale Pfade, file:-URLs und Optionen als Eingabe.
+  const safeUrl = normalizeHttpUrl(normalized.url);
+  if (!safeUrl) {
+    return { ok: false, error: "Nur http(s)-Links sind erlaubt." };
+  }
+  normalized.url = safeUrl;
+
+  // Ausgabeordner muss freigegeben sein (Standard-Download-Ordner oder im Dialog gewaehlt).
+  const ordner = getFolderPolicy().checkFolder(normalized.outputFolder);
+  if (!ordner.ok) {
+    return { ok: false, error: `${ordner.error} Bitte den Ordner über "Ordner wählen" neu auswählen.` };
+  }
+  normalized.outputFolder = ordner.path;
   sendToRenderer("download:started", normalized);
 
   // Transkript läuft über eine eigene Pipeline (Untertitel + Whisper-Fallback).
@@ -828,10 +901,13 @@ ipcMain.handle("download:start", async (_event, options) => {
 // Läuft über den PodcastFeedSiteResolver: ein SiteResolver, der mehrere
 // Provider-Referenzen (eine pro Episode) liefert. Bewusst ohne Ausweichen auf
 // den generischen Resolver – hier ist wirklich ein Feed gemeint.
-ipcMain.handle("podcast:resolve", async (_event, url) => {
+ipcMain.handle("podcast:resolve", async (event, url) => {
+  if (!fromApp(event)) return NOT_ALLOWED;
+  const feedUrl = normalizeHttpUrl(url);
+  if (!feedUrl) return { ok: false, error: "Nur http(s)-Links sind erlaubt." };
   try {
     const references = await resolverManager.resolveSite(
-      String(url || "").trim(),
+      feedUrl,
       buildResolveContext({ logger: createResolveLogger() }),
       { only: ["podcast-rss"] }
     );
@@ -865,30 +941,41 @@ ipcMain.handle("download:cancel", () => {
 });
 
 // Folder open
-ipcMain.handle("folder:open", async (_event, folderPath) => {
-  const target = folderPath || getDefaultDownloadFolder();
-  await shell.openPath(target);
-  return { ok: true };
+ipcMain.handle("folder:open", async (event, folderPath) => {
+  if (!fromApp(event)) return NOT_ALLOWED;
+  const ordner = getFolderPolicy().checkFolder(folderPath || getDefaultDownloadFolder(), { mustExist: true });
+  if (!ordner.ok) return ordner;
+  const fehler = await shell.openPath(ordner.path);
+  return fehler ? { ok: false, error: fehler } : { ok: true };
 });
 
 // Datei mit der Standard-App des Systems öffnen (z. B. MP3 im Player,
 // Transkript-TXT im Texteditor) – für Notification-Klick und Auto-Open.
-ipcMain.handle("file:open", async (_event, filePath) => {
+ipcMain.handle("file:open", async (event, filePath) => {
+  if (!fromApp(event)) return NOT_ALLOWED;
   if (!filePath || typeof filePath !== "string") {
     return { ok: false, error: "Kein Dateipfad angegeben." };
   }
-  const error = await shell.openPath(filePath);
+  // Nur Medien-/Textdateien in freigegebenen Ordnern; nie Programmdateien.
+  const datei = getFolderPolicy().checkFile(filePath);
+  if (!datei.ok) return datei;
+  const error = await shell.openPath(datei.path);
   return error ? { ok: false, error } : { ok: true };
 });
 
 // Datei löschen (Verlauf-Eintrag entfernen soll auch die echte Datei löschen).
 // fs.unlink wirkt nur auf Dateien, nie auf Verzeichnisse.
-ipcMain.handle("file:delete", async (_event, filePath) => {
+ipcMain.handle("file:delete", async (event, filePath) => {
+  if (!fromApp(event)) return NOT_ALLOWED;
   if (!filePath || typeof filePath !== "string") {
     return { ok: false, error: "Kein Dateipfad angegeben." };
   }
+  // Nur Medien-/Textdateien innerhalb freigegebener Ordner, keine Symlinks.
+  const datei = getFolderPolicy().checkFile(filePath);
+  if (datei.missing) return { ok: true }; // bereits gelöscht
+  if (!datei.ok) return datei;
   try {
-    await fs.promises.unlink(filePath);
+    await fs.promises.unlink(datei.path);
     return { ok: true };
   } catch (err) {
     if (err.code === "ENOENT") return { ok: true }; // bereits gelöscht
