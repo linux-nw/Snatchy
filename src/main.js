@@ -38,6 +38,33 @@ const bundledExe = (name) => {
   return fs.existsSync(p) ? p : null;
 };
 
+// Einmalige Uebernahme der Nutzerdaten vom alten App-Namen. userData haengt am
+// package.json-Namen: alt %APPDATA%\ytx-downloader-gui, neu %APPDATA%\snatchy.
+// Der alte Ordner wird KOPIERT, nicht verschoben, damit ein Rueckweg bleibt.
+// Laeuft vor app.whenReady, solange Chromium den neuen Ordner noch nicht nutzt.
+// TODO: Kann entfernt werden, sobald alle Installationen einmal gestartet wurden.
+const migrateLegacyUserData = () => {
+  try {
+    const legacyDir = path.join(app.getPath("appData"), "ytx-downloader-gui");
+    const userDataDir = app.getPath("userData");
+    const marker = path.join(userDataDir, ".migrated-from-ytx");
+    if (legacyDir === userDataDir || fs.existsSync(marker) || !fs.existsSync(legacyDir)) {
+      return;
+    }
+    const skip = new Set(["SingletonLock", "SingletonCookie", "SingletonSocket", "lockfile", "LOCK"]);
+    fs.cpSync(legacyDir, userDataDir, {
+      recursive: true,
+      force: false,
+      errorOnExist: false,
+      filter: (src) => !skip.has(path.basename(src))
+    });
+    fs.writeFileSync(marker, new Date().toISOString());
+  } catch (err) {
+    console.warn("[Snatchy] Uebernahme alter Nutzerdaten fehlgeschlagen:", err && err.message);
+  }
+};
+migrateLegacyUserData();
+
 let mainWindow;
 let activeDownload = null;
 // Bricht laufende Auflösungen (fetch, headless Browser) beim Abbrechen ab.
