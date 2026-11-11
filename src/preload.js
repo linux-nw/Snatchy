@@ -13,7 +13,7 @@ const windowControls = {
   close: () => ipcRenderer.send("window:close")
 };
 
-contextBridge.exposeInMainWorld("ytx", {
+contextBridge.exposeInMainWorld("snatchy", {
   getState: () => ipcRenderer.invoke("app:get-state"),
   setTheme: (theme) => ipcRenderer.invoke("app:set-theme", theme),
   selectFolder: () => ipcRenderer.invoke("dialog:select-folder"),

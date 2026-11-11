@@ -1,10 +1,10 @@
-# YTX Downloader
+# Snatchy
 
 Desktop-App (Electron) zum Herunterladen von Video und Audio über yt-dlp.
 
 ## Installation
 
-`YTX Downloader Setup x.y.z.exe` ausführen. Alternativ läuft `YTX Downloader x.y.z.exe` als portable Version ohne Installation.
+`Snatchy Setup x.y.z.exe` ausführen. Alternativ läuft `Snatchy x.y.z.exe` als portable Version ohne Installation.
 
 Folgende Programme sind im Installer enthalten und müssen nicht separat installiert werden:
 

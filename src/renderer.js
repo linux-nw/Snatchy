@@ -1,13 +1,34 @@
 /* ============================================================
-   YTX Downloader - Renderer Process
+   Snatchy - Renderer Process
    Steuert die React App und kommuniziert mit Electron Backend
    ============================================================ */
 
+// Einmalige Migration der localStorage-Schluessel von ytx-* auf snatchy-*.
+// Liest jeden alten Schluessel, speichert den Wert unter dem neuen Namen (ein
+// bereits vorhandener neuer Wert gewinnt) und loescht danach den alten.
+// TODO: Kann entfernt werden, sobald alle Installationen einmal gestartet wurden.
+(() => {
+  try {
+    const legacyKeys = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('ytx-')) legacyKeys.push(key);
+    }
+    legacyKeys.forEach((oldKey) => {
+      const newKey = 'snatchy-' + oldKey.slice('ytx-'.length);
+      if (localStorage.getItem(newKey) === null) {
+        localStorage.setItem(newKey, localStorage.getItem(oldKey));
+      }
+      localStorage.removeItem(oldKey);
+    });
+  } catch { /* localStorage nicht verfuegbar: nichts zu migrieren */ }
+})();
+
 // Backend API Bridge
-const getYtxAPI = () => {
-  if (!window.ytx) {
+const getSnatchyAPI = () => {
+  if (!window.snatchy) {
     const noopListen = () => () => {};
-    window.ytx = {
+    window.snatchy = {
       getState: async () => ({ defaultDownloadFolder: "Downloads", platform: "browser" }),
       setTheme: async () => ({ ok: true }),
       selectFolder: async () => null,
@@ -24,7 +45,7 @@ const getYtxAPI = () => {
       onFailed: noopListen
     };
   }
-  return window.ytx;
+  return window.snatchy;
 };
 
 // Vela Design System Komponenten
@@ -196,7 +217,7 @@ function VelaApp() {
   const [playlistMode, setPlaylistMode] = useState('single');
   const [downloads, setDownloads] = useState([]);
   const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ytx-history') || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('snatchy-history') || '[]'); } catch { return []; }
   });
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState(null);
@@ -222,7 +243,7 @@ function VelaApp() {
   // Backend-Abhängigkeiten (Default true, damit vor der Prüfung keine Warnung blitzt)
   const [deps, setDeps] = useState({ ytDlpAvailable: true, ffmpegAvailable: true });
 
-  const ytx = getYtxAPI();
+  const snatchy = getSnatchyAPI();
 
   // Id des aktuell laufenden Downloads (für Backend-Events)
   const activeIdRef = useRef(null);
@@ -242,34 +263,34 @@ function VelaApp() {
   // Initialisierung
   useEffect(() => {
     const init = async () => {
-      const savedTheme = localStorage.getItem('ytx-theme') || 'dark';
+      const savedTheme = localStorage.getItem('snatchy-theme') || 'dark';
       setTheme(savedTheme);
       document.body.dataset.theme = savedTheme;
 
-      const savedAuto = localStorage.getItem('ytx-auto-start');
+      const savedAuto = localStorage.getItem('snatchy-auto-start');
       if (savedAuto !== null) setAutoStart(savedAuto === 'true');
-      const savedNotif = localStorage.getItem('ytx-notifications');
+      const savedNotif = localStorage.getItem('snatchy-notifications');
       if (savedNotif !== null) setNotifications(savedNotif === 'true');
-      const savedOpenAfter = localStorage.getItem('ytx-open-after');
+      const savedOpenAfter = localStorage.getItem('snatchy-open-after');
       if (savedOpenAfter !== null) setOpenAfter(savedOpenAfter === 'true');
-      const savedOpenFileAfter = localStorage.getItem('ytx-open-file-after');
+      const savedOpenFileAfter = localStorage.getItem('snatchy-open-file-after');
       if (savedOpenFileAfter !== null) setOpenFileAfter(savedOpenFileAfter === 'true');
-      const savedEncoding = localStorage.getItem('ytx-encoding');
+      const savedEncoding = localStorage.getItem('snatchy-encoding');
       if (savedEncoding) setEncoding(savedEncoding);
-      const savedCookies = localStorage.getItem('ytx-cookies-browser');
+      const savedCookies = localStorage.getItem('snatchy-cookies-browser');
       if (savedCookies) setCookiesBrowser(savedCookies);
-      const savedPw = localStorage.getItem('ytx-playwright-fallback');
+      const savedPw = localStorage.getItem('snatchy-playwright-fallback');
       if (savedPw !== null) setPlaywrightFallback(savedPw === 'true');
-      const savedCoverArt = localStorage.getItem('ytx-cover-art');
+      const savedCoverArt = localStorage.getItem('snatchy-cover-art');
       if (savedCoverArt) setCoverArt(savedCoverArt);
-      const savedModel = localStorage.getItem('ytx-whisper-model');
+      const savedModel = localStorage.getItem('snatchy-whisper-model');
       if (savedModel) setWhisperModel(savedModel);
-      const savedLang = localStorage.getItem('ytx-transcript-lang');
+      const savedLang = localStorage.getItem('snatchy-transcript-lang');
       if (savedLang) setTranscriptLang(savedLang);
 
       try {
-        const state = await ytx.getState();
-        const savedFolder = localStorage.getItem('ytx-output-folder');
+        const state = await snatchy.getState();
+        const savedFolder = localStorage.getItem('snatchy-output-folder');
         if (savedFolder) {
           setFolder(savedFolder);
         } else {
@@ -289,23 +310,23 @@ function VelaApp() {
   // Theme anwenden
   useEffect(() => {
     document.body.dataset.theme = theme;
-    localStorage.setItem('ytx-theme', theme);
-    ytx.setTheme(theme);
-  }, [theme, ytx]);
+    localStorage.setItem('snatchy-theme', theme);
+    snatchy.setTheme(theme);
+  }, [theme, snatchy]);
 
   // Verhalten-Einstellungen persistieren
-  useEffect(() => { if (folder) localStorage.setItem('ytx-output-folder', folder); }, [folder]);
-  useEffect(() => { localStorage.setItem('ytx-auto-start', String(autoStart)); }, [autoStart]);
-  useEffect(() => { localStorage.setItem('ytx-notifications', String(notifications)); }, [notifications]);
-  useEffect(() => { localStorage.setItem('ytx-open-after', String(openAfter)); }, [openAfter]);
-  useEffect(() => { localStorage.setItem('ytx-open-file-after', String(openFileAfter)); }, [openFileAfter]);
-  useEffect(() => { localStorage.setItem('ytx-encoding', encoding); }, [encoding]);
-  useEffect(() => { localStorage.setItem('ytx-cookies-browser', cookiesBrowser); }, [cookiesBrowser]);
-  useEffect(() => { localStorage.setItem('ytx-playwright-fallback', String(playwrightFallback)); }, [playwrightFallback]);
-  useEffect(() => { localStorage.setItem('ytx-cover-art', coverArt); }, [coverArt]);
-  useEffect(() => { localStorage.setItem('ytx-whisper-model', whisperModel); }, [whisperModel]);
-  useEffect(() => { localStorage.setItem('ytx-transcript-lang', transcriptLang); }, [transcriptLang]);
-  useEffect(() => { localStorage.setItem('ytx-history', JSON.stringify(history)); }, [history]);
+  useEffect(() => { if (folder) localStorage.setItem('snatchy-output-folder', folder); }, [folder]);
+  useEffect(() => { localStorage.setItem('snatchy-auto-start', String(autoStart)); }, [autoStart]);
+  useEffect(() => { localStorage.setItem('snatchy-notifications', String(notifications)); }, [notifications]);
+  useEffect(() => { localStorage.setItem('snatchy-open-after', String(openAfter)); }, [openAfter]);
+  useEffect(() => { localStorage.setItem('snatchy-open-file-after', String(openFileAfter)); }, [openFileAfter]);
+  useEffect(() => { localStorage.setItem('snatchy-encoding', encoding); }, [encoding]);
+  useEffect(() => { localStorage.setItem('snatchy-cookies-browser', cookiesBrowser); }, [cookiesBrowser]);
+  useEffect(() => { localStorage.setItem('snatchy-playwright-fallback', String(playwrightFallback)); }, [playwrightFallback]);
+  useEffect(() => { localStorage.setItem('snatchy-cover-art', coverArt); }, [coverArt]);
+  useEffect(() => { localStorage.setItem('snatchy-whisper-model', whisperModel); }, [whisperModel]);
+  useEffect(() => { localStorage.setItem('snatchy-transcript-lang', transcriptLang); }, [transcriptLang]);
+  useEffect(() => { localStorage.setItem('snatchy-history', JSON.stringify(history)); }, [history]);
 
   // Format automatisch an die eingefügte URL anpassen, damit keine unsinnige
   // Kombination (z. B. Podcast-Format bei einem YouTube-Link) stehen bleibt.
@@ -342,7 +363,7 @@ function VelaApp() {
       ));
     };
 
-    const unsubscribeProgress = ytx.onProgress((progress) => {
+    const unsubscribeProgress = snatchy.onProgress((progress) => {
       if (progress.percent === undefined) return;
       updateActive({
         progress: progress.percent,
@@ -352,7 +373,7 @@ function VelaApp() {
       });
     });
 
-    const unsubscribeLog = ytx.onLog((line) => {
+    const unsubscribeLog = snatchy.onLog((line) => {
       console.log('[Backend]', line);
       // Whisper-Phase markieren, damit die Zeile einen unbestimmten Fortschritt zeigt.
       if (/^\[Whisper\]/.test(line)) updateActive({ transcribing: true });
@@ -364,7 +385,7 @@ function VelaApp() {
       if (name) updateActive({ filename: name });
     });
 
-    const unsubscribeCompleted = ytx.onCompleted((payload) => {
+    const unsubscribeCompleted = snatchy.onCompleted((payload) => {
       const id = activeIdRef.current;
       activeIdRef.current = null;
       const item = downloadsRef.current.find(d => d.id === id);
@@ -374,14 +395,14 @@ function VelaApp() {
         try {
           const n = new Notification('Download abgeschlossen', { body: item.filename || item.url });
           // Klick auf die Benachrichtigung öffnet die fertige Datei direkt.
-          n.onclick = () => ytx.openFile(targetPath || folderRef.current);
+          n.onclick = () => snatchy.openFile(targetPath || folderRef.current);
         } catch (e) { /* Notification nicht verfügbar */ }
       }
       if (openAfterRef.current) {
-        ytx.openFolder(folderRef.current);
+        snatchy.openFolder(folderRef.current);
       }
       if (openFileAfterRef.current && targetPath) {
-        ytx.openFile(targetPath);
+        snatchy.openFile(targetPath);
       }
       // Abgeschlossene Downloads wandern sofort in den Verlauf, statt in der
       // Warteschlange als "done" liegen zu bleiben.
@@ -403,7 +424,7 @@ function VelaApp() {
       }
     });
 
-    const unsubscribeFailed = ytx.onFailed((message) => {
+    const unsubscribeFailed = snatchy.onFailed((message) => {
       console.error('Download fehlgeschlagen:', message);
       const id = activeIdRef.current;
       activeIdRef.current = null;
@@ -416,7 +437,7 @@ function VelaApp() {
       unsubscribeCompleted();
       unsubscribeFailed();
     };
-  }, [ytx]);
+  }, [snatchy]);
 
   // Einen Eintrag im Backend starten
   const startItem = useCallback((item) => {
@@ -442,7 +463,7 @@ function VelaApp() {
       embedCoverArt: item.coverArt === 'thumbnail'
     };
 
-    ytx.startDownload(options).then(result => {
+    snatchy.startDownload(options).then(result => {
       if (!result.ok) {
         setDownloads(prev => prev.map(d => d.id === item.id ? { ...d, status: 'error', error: result.error } : d));
         if (activeIdRef.current === item.id) activeIdRef.current = null;
@@ -452,7 +473,7 @@ function VelaApp() {
       setDownloads(prev => prev.map(d => d.id === item.id ? { ...d, status: 'error', error: String(err) } : d));
       if (activeIdRef.current === item.id) activeIdRef.current = null;
     });
-  }, [ytx]);
+  }, [snatchy]);
 
   // Warteschlange sequentiell abarbeiten: ein Download gleichzeitig
   useEffect(() => {
@@ -467,7 +488,7 @@ function VelaApp() {
   // wird nichts zur Warteschlange hinzugefügt.
   const openPodcastPicker = useCallback((feedUrl) => {
     setPodcastPicker({ feedUrl, loading: true, error: null, episodes: [] });
-    ytx.resolvePodcast(feedUrl).then(result => {
+    snatchy.resolvePodcast(feedUrl).then(result => {
       setPodcastPicker(prev => {
         if (!prev || prev.feedUrl !== feedUrl) return prev; // zwischenzeitlich geschlossen/ersetzt
         if (!result.ok) return { ...prev, loading: false, error: result.error };
@@ -480,7 +501,7 @@ function VelaApp() {
     }).catch(err => {
       setPodcastPicker(prev => (prev && prev.feedUrl === feedUrl) ? { ...prev, loading: false, error: String(err) } : prev);
     });
-  }, [ytx]);
+  }, [snatchy]);
 
   const closePodcastPicker = useCallback(() => setPodcastPicker(null), []);
 
@@ -585,7 +606,7 @@ function VelaApp() {
   // Download entfernen (aktiven Download zuvor abbrechen)
   const removeDownload = (id) => {
     if (activeIdRef.current === id) {
-      ytx.cancelDownload();
+      snatchy.cancelDownload();
       activeIdRef.current = null;
     }
     setDownloads(prev => prev.filter(d => d.id !== id));
@@ -598,12 +619,12 @@ function VelaApp() {
 
   // Ordner öffnen
   const openFolder = () => {
-    ytx.openFolder(folder);
+    snatchy.openFolder(folder);
   };
 
   // Ordner wählen
   const chooseFolder = async () => {
-    const selected = await ytx.selectFolder();
+    const selected = await snatchy.selectFolder();
     if (selected) {
       setFolder(selected);
     }
@@ -620,7 +641,7 @@ function VelaApp() {
     const entry = history.find(h => h.id === id);
     const target = entry && (entry.transcriptPath || entry.filePath);
     if (target) {
-      ytx.deleteFile(target).catch(err => console.error('Datei konnte nicht gelöscht werden:', err));
+      snatchy.deleteFile(target).catch(err => console.error('Datei konnte nicht gelöscht werden:', err));
     }
     setHistory(prev => prev.filter(h => h.id !== id));
     if (expandedHistoryId === id) setExpandedHistoryId(null);
@@ -746,7 +767,7 @@ function VelaApp() {
                 <IconText />
               </IconButton>
             )}
-            <IconButton aria-label="Ordner öffnen" onClick={() => ytx.openFolder(entry.outputFolder)}><IconFolder /></IconButton>
+            <IconButton aria-label="Ordner öffnen" onClick={() => snatchy.openFolder(entry.outputFolder)}><IconFolder /></IconButton>
             <IconButton aria-label="Aus Verlauf entfernen" onClick={() => removeHistoryEntry(entry.id)}><IconTrash /></IconButton>
           </div>
         </div>
@@ -1155,7 +1176,7 @@ function VelaApp() {
           <path d="M7.5 10.5 12 15l4.5-4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
         </svg>
-        <span className="tb-name">YTX Downloader</span>
+        <span className="tb-name">Snatchy</span>
       </div>
       <div className="tb-space" />
       <div className="tb-wc">
