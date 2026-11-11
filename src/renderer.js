@@ -393,7 +393,7 @@ function VelaApp() {
       const targetPath = payload && (payload.filePath || payload.transcriptPath);
       if (notificationsRef.current && item && typeof Notification !== 'undefined') {
         try {
-          const n = new Notification('Download abgeschlossen', { body: item.filename || item.url });
+          const n = new Notification('Snatchy: Download abgeschlossen', { body: item.filename || item.url, icon: new URL('../assets/icons/icon-512.png', window.location.href).href });
           // Klick auf die Benachrichtigung öffnet die fertige Datei direkt.
           n.onclick = () => snatchy.openFile(targetPath || folderRef.current);
         } catch (e) { /* Notification nicht verfügbar */ }
@@ -1171,11 +1171,7 @@ function VelaApp() {
   const TitleBar = () => (
     <div className="titlebar">
       <div className="tb-brand">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <path d="M12 3v11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M7.5 10.5 12 15l4.5-4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M5 19h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
-        </svg>
+        <img className="tb-icon" src="../assets/icons/icon-512.png" alt="" width="20" height="20" draggable="false" />
         <span className="tb-name">Snatchy</span>
       </div>
       <div className="tb-space" />

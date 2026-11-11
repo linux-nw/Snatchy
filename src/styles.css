@@ -47,6 +47,14 @@
   -webkit-app-region: no-drag;
 }
 
+.tb-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+  user-select: none;
+}
+
 .tb-name {
   font: var(--weight-semibold) 13px/1 var(--font-sans);
   color: var(--vela-text);
