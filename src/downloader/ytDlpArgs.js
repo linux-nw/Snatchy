@@ -158,7 +158,7 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
     args.push("--cookies-from-browser", cookiesBrowser);
   }
 
-  args.push(url);
+  args.push("--", url); // "--": die URL wird nie als Option gelesen
   return args;
 };
 
@@ -187,7 +187,7 @@ const buildSubtitleArgs = ({ url, subLangs, outputFolder, cookiesBrowser, impers
   ];
   if (impersonate) args.push("--impersonate", "chrome");
   if (cookiesBrowser && cookiesBrowser !== "none") args.push("--cookies-from-browser", cookiesBrowser);
-  args.push(url);
+  args.push("--", url); // "--": die URL wird nie als Option gelesen
   return args;
 };
 
@@ -201,7 +201,7 @@ const buildPrintArgs = ({ field, url, cookiesBrowser, impersonate }) => {
   const args = ["--skip-download", "--no-playlist", "--print", field];
   if (impersonate) args.push("--impersonate", "chrome");
   if (cookiesBrowser && cookiesBrowser !== "none") args.push("--cookies-from-browser", cookiesBrowser);
-  args.push(url);
+  args.push("--", url); // "--": die URL wird nie als Option gelesen
   return args;
 };
 

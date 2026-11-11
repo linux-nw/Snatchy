@@ -35,6 +35,7 @@ test("MP4: Formatkette mit Höhenlimit und Fallbacks", () => {
   assert.ok(args.includes("--embed-chapters"));
   assert.ok(args.includes("--no-playlist"));
   assert.equal(args[args.length - 1], basis.url, "die URL steht immer am Ende");
+  assert.equal(args[args.length - 2], "--", "vor der URL steht --, damit sie nie als Option gelesen wird");
 });
 
 test("MP4 ohne Qualitätswunsch nimmt das beste Format", () => {
@@ -107,6 +108,7 @@ test("Untertitel-Argumente bleiben unverändert", () => {
   assert.equal(valueOf(args, "--sub-format"), "vtt/srt/best");
   assert.equal(valueOf(args, "--cookies-from-browser"), "chrome");
   assert.equal(args[args.length - 1], basis.url);
+  assert.equal(args[args.length - 2], "--");
 });
 
 test("Metadaten-Abruf nutzt --print", () => {
@@ -115,6 +117,7 @@ test("Metadaten-Abruf nutzt --print", () => {
   assert.equal(valueOf(args, "--impersonate"), "chrome");
   assert.equal(valueOf(args, "--cookies-from-browser"), "edge");
   assert.equal(args[args.length - 1], basis.url);
+  assert.equal(args[args.length - 2], "--");
 });
 
 test("Eingaben werden auf erlaubte Werte begrenzt", () => {
