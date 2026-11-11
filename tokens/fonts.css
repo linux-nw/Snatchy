@@ -1,9 +1,14 @@
 /* ============================================================
-   Vela — Webfonts
+   Vela - Webfonts (lokal gebuendelt, kein Google-Fonts-CDN)
    Hanken Grotesk (UI / display) + JetBrains Mono (numeric data).
-   NOTE: loaded from Google Fonts CDN for this design-system demo.
-   For production, self-host the .woff2 files and replace this
-   @import with local @font-face rules.
+   Dateien: assets/fonts/*.woff2, Lizenz SIL OFL 1.1 (siehe LICENSE-*-OFL.txt).
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 400; font-display: swap; src: url('../assets/fonts/hanken-grotesk-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 500; font-display: swap; src: url('../assets/fonts/hanken-grotesk-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 600; font-display: swap; src: url('../assets/fonts/hanken-grotesk-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 700; font-display: swap; src: url('../assets/fonts/hanken-grotesk-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Hanken Grotesk'; font-style: normal; font-weight: 800; font-display: swap; src: url('../assets/fonts/hanken-grotesk-latin-800-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('../assets/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('../assets/fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url('../assets/fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2'); }
