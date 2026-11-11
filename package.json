@@ -55,7 +55,7 @@
     ]
   },
   "devDependencies": {
-    "electron": "28.3.3",
+    "electron": "44.11.1",
     "electron-builder": "^26.15.3",
     "esbuild": "0.28.2"
   },
