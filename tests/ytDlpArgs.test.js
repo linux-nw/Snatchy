@@ -129,3 +129,11 @@ test("Eingaben werden auf erlaubte Werte begrenzt", () => {
   assert.equal(ALLOWED_BROWSERS.has("firefox"), true);
   assert.equal(ALLOWED_BROWSERS.has("netscape"), false);
 });
+
+test("ytsearch-Eingabe steht hinter -- und nie als Option", () => {
+  const eingabe = "ytsearch5:katzen videos";
+  const args = buildYtDlpArgs({ ...basis, url: eingabe });
+  assert.equal(args[args.length - 1], eingabe);
+  assert.equal(args[args.length - 2], "--");
+  assert.equal(args.filter((a) => a === "--").length, 1, "genau ein --");
+});
