@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icons/icon-512.png" alt="Snatchy" width="128"></p>
+
 # Snatchy
 
 Desktop-App (Electron) zum Herunterladen von Video und Audio über yt-dlp.
