@@ -87,7 +87,7 @@ function formatPubDate(raw) {
 }
 
 // Dateiformat-Tag (MP4/MP3/TXT) samt Farbe je Format – dieselben Farben wie bei
-// den Format-Icons (Video=teal, Audio=indigo, Transkript=lila).
+// den Format-Icons (Video=Gruen, Audio=Kreide, Transkript=lila).
 function formatTagInfo(format) {
   if (format === 'transcript') return { label: 'TXT', color: 'var(--vela-tertiary, oklch(0.78 0.15 300))' };
   if (format === 'audio') return { label: 'MP3', color: 'var(--vela-audio)' };
@@ -222,6 +222,7 @@ function VelaApp() {
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [launchKey, setLaunchKey] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [folder, setFolder] = useState('');
@@ -706,7 +707,7 @@ function VelaApp() {
     const icoClass = isTranscript ? 'vdli-transcript' : download.format === 'audio' ? 'vdli-audio' : 'vdli-video';
 
     return (
-      <div className="vdlr">
+      <div className={`vdlr vdlr-live is-${download.status}`}>
         <div className={`vdlr-ico ${icoClass}`}>
           {isTranscript ? <IconText /> : download.format === 'audio' ? <IconAudio /> : <IconVideo />}
         </div>
@@ -791,41 +792,91 @@ function VelaApp() {
     // erkannten RSS-Feed sind Video/Audio/Transkript unmöglich, bei jeder
     // anderen URL ist Podcast unmöglich. Leeres Feld → keine Einschränkung.
     const disabledFormats = !url.trim() ? [] : looksLikePodcastFeed(url) ? ['video', 'audio', 'transcript'] : ['podcast'];
+    const idle = downloads.length === 0;
+    // Klick auf Herunterladen: Schluessel hochzaehlen -> Pfeil-Icon wird neu
+    // gemountet und spielt seine "Abschuss"-Animation jedes Mal von vorn.
+    const launch = () => { setLaunchKey(k => k + 1); addDownload(); };
     return (
-    <div className="input-card">
-      {UrlBar({
-        value: url, onChange: setUrl, onPaste: (text) => setUrl(text),
-        placeholder: format === 'podcast' ? 'Podcast-RSS-Feed-Link einfügen...' : 'Video- oder Playlist-URL einfügen... (auch mehrere, eine pro Zeile)'
-      })}
-      {platform && (
-        <div className="platform-badge">
-          <span className="platform-badge-dot" />
-          {platform.label} erkannt
-          {platform.note && <span className="platform-badge-note"> · {platform.note}</span>}
+    <div className="command">
+      {/* Idle-Bereiche bleiben im DOM und klappen per CSS weich zu (.collapse),
+          statt beim ersten Download hart zu verschwinden. */}
+      <div className="collapse" inert={idle ? undefined : ''}>
+        <div className="collapse-inner">
+          <div className="idle-head">
+            <img className="idle-mark" src="../assets/icons/icon-512.png" alt="" width="48" height="48" draggable="false" />
+            <p className="idle-title">Was soll geladen werden?</p>
+            <p className="idle-sub">Link einfügen und herunterladen. Mehrere Links gehen auch, einer pro Zeile.</p>
+          </div>
         </div>
-      )}
-      <div className="opts-row">
-        {FormatToggle({ value: format, disabled: disabledFormats, onChange: (v) => { setFormat(v); if (v === 'video') setQuality('best'); else if (v === 'audio') setQuality('256k'); } })}
-        {format !== 'transcript' && <div style={{ width: 155 }}><Select value={quality} onChange={setQuality} options={qualityOptions} /></div>}
-        <div style={{ flex: 1 }} />
-        <button className="settings-btn" onClick={() => setShowSettings(true)} aria-label="Einstellungen" title="Einstellungen">
-          <IconGear />
-        </button>
-        <Button variant={url.trim() ? 'primary' : 'neutral'} disabled={!url.trim()} onClick={addDownload}>
-          <IconDownload /> {format === 'podcast' ? 'Folgen auswählen' : (autoStart ? 'Herunterladen' : 'Zur Warteschlange')}
+      </div>
+      <div className="url-row">
+        {UrlBar({
+          value: url, onChange: setUrl, onPaste: (text) => setUrl(text),
+          placeholder: format === 'podcast' ? 'Podcast-RSS-Feed-Link einfügen...' : 'Video- oder Playlist-URL einfügen …'
+        })}
+        <Button variant={url.trim() ? 'primary' : 'neutral'} disabled={!url.trim()} onClick={launch} className={`snatch-cta${url.trim() ? ' ready' : ''}`}>
+          <span key={launchKey} className={`cta-ico${launchKey > 0 ? ' fire' : ''}`}><IconDownload /></span>
+          {format === 'podcast' ? 'Folgen auswählen' : (autoStart ? 'Herunterladen' : 'Zur Warteschlange')}
         </Button>
       </div>
+      <div className="opts-row">
+        {FormatToggle({ value: format, disabled: disabledFormats, onChange: (v) => { setFormat(v); if (v === 'video') setQuality('best'); else if (v === 'audio') setQuality('256k'); } })}
+        {format !== 'transcript' && <div className="quality-select"><Select value={quality} onChange={setQuality} options={qualityOptions} /></div>}
+        <div className="opts-spacer" />
+        {platform && (
+          <div className="platform-badge">
+            {platform.label} erkannt
+            {platform.note && <span className="platform-badge-note"> · {platform.note}</span>}
+          </div>
+        )}
+      </div>
       {looksLikePlaylist(url) && <div className="pl-anim">{PlaylistMode({ mode: playlistMode, onChange: setPlaylistMode })}</div>}
+      <div className="collapse" inert={idle ? undefined : ''}>
+        <div className="collapse-inner">
+          <div className="idle-foot">
+            <div className="queue-empty-dest">
+              <IconFolder />
+              <span className="queue-empty-path" title={folder}>{folder || 'Downloads'}</span>
+              <button className="queue-empty-btn" onClick={openFolder}>Öffnen</button>
+              <button className="queue-empty-btn" onClick={chooseFolder}>Ändern</button>
+            </div>
+          </div>
+          {history.length > 0 && (
+            <div className="idle-history">
+              <div className="dl-header">
+                <span className="dl-htitle">Zuletzt geladen</span>
+                <span className="dl-count">{history.length}</span>
+                <div style={{ flex: 1 }} />
+                <button className="dl-clear" onClick={clearHistory}>Verlauf leeren</button>
+              </div>
+              <div className="dl-list">{history.map(h => <React.Fragment key={h.id}>{HistoryItem({ entry: h })}</React.Fragment>)}</div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
     );
   };
 
   // Download Tab
+  // Leerzustand: schlichter Text, linksbuendig, sagt was als Naechstes zu tun ist.
+  const EmptyState = ({ title, text }) => (
+    <div className="empty">
+      <p className="empty-title">{title}</p>
+      <p className="empty-text">{text}</p>
+    </div>
+  );
+
+  // Hauptansicht: links Befehlsleiste + Warteschlange, rechts der Verlauf.
+  // Ohne Downloads sitzt die Eingabe vertikal mittig (Abstandshalter oben/unten
+  // wachsen); sobald etwas in der Warteschlange ist, schrumpfen sie animiert
+  // und die Eingabe gleitet nach oben, die Liste faehrt darunter auf.
   const DownloadsTab = () => (
-    <>
-      <div className="dl-top-spacer" />
-      {InputCard()}
-      {(!deps.ytDlpAvailable || !deps.ffmpegAvailable) && (
+    <div className={`layout${downloads.length === 0 ? ' is-idle' : ''}`}>
+      <main className={`workspace${downloads.length === 0 ? ' is-idle' : ''}`}>
+          <div className="ws-spacer ws-top" aria-hidden="true" />
+          {InputCard()}
+          {(!deps.ytDlpAvailable || !deps.ffmpegAvailable) && (
         <div className="dep-warning">
           <IconWarn />
           <span>
@@ -835,32 +886,34 @@ function VelaApp() {
           </span>
         </div>
       )}
-      <div className="dl-sections">
-        <div className="dl-section">
-          <div className="dl-header">
-            <span className="dl-htitle">Warteschlange</span>
-            {activeCount > 0 && <Badge variant="primary">{activeCount} aktiv</Badge>}
-            <div style={{ flex: 1 }} />
-            {downloads.some(d => d.status === 'error') && <button className="dl-clear" onClick={clearErrors}>Fehlgeschlagene entfernen</button>}
-          </div>
-          {downloads.length === 0
-            ? <div className="empty"><p>Noch keine begonnenen Downloads.</p></div>
-            : <div className="dl-list">{downloads.map(d => <React.Fragment key={d.id}>{DownloadItem({ download: d })}</React.Fragment>)}</div>
-          }
+          <section className="dl-section dl-queue" aria-hidden={downloads.length === 0}>
+            {downloads.length > 0 && (
+              <>
+                <div className="dl-header">
+                  <span className="dl-htitle">Warteschlange</span>
+                  <span className="dl-count">{downloads.length}</span>
+                  <div style={{ flex: 1 }} />
+                  {downloads.some(d => d.status === 'error') && <button className="dl-clear" onClick={clearErrors}>Fehlgeschlagene entfernen</button>}
+                </div>
+                <div className="dl-list">{downloads.map(d => <React.Fragment key={d.id}>{DownloadItem({ download: d })}</React.Fragment>)}</div>
+              </>
+            )}
+          </section>
+          <div className="ws-spacer ws-bottom" aria-hidden="true" />
+      </main>
+      <aside className="dl-section history-rail" inert={downloads.length === 0 ? '' : undefined}>
+        <div className="dl-header">
+          <span className="dl-htitle">Verlauf</span>
+          {history.length > 0 && <span className="dl-count">{history.length}</span>}
+          <div style={{ flex: 1 }} />
+          {history.length > 0 && <button className="dl-clear" onClick={clearHistory}>Verlauf leeren</button>}
         </div>
-        <div className="dl-section">
-          <div className="dl-header">
-            <span className="dl-htitle">Verlauf</span>
-            <div style={{ flex: 1 }} />
-            {history.length > 0 && <button className="dl-clear" onClick={clearHistory}>Verlauf leeren</button>}
-          </div>
-          {history.length === 0
-            ? <div className="empty"><p>Noch keine abgeschlossenen Downloads.</p></div>
-            : <div className="dl-list">{history.map(h => <React.Fragment key={h.id}>{HistoryItem({ entry: h })}</React.Fragment>)}</div>
-          }
-        </div>
-      </div>
-    </>
+        {history.length === 0
+          ? EmptyState({ title: 'Noch nichts fertig', text: 'Abgeschlossene Downloads erscheinen hier, mit Zugriff auf den Ordner.' })
+          : <div className="dl-list">{history.map(h => <React.Fragment key={h.id}>{HistoryItem({ entry: h })}</React.Fragment>)}</div>
+        }
+      </aside>
+    </div>
   );
 
   // Eine Karte für ein einzelnes Setting.
@@ -1069,7 +1122,7 @@ function VelaApp() {
   };
 
   // Format Toggle (Video / Audio / Transkript) mit gleitender Markierung, die
-  // beim Wechsel über die Zwischen-Segmente slidet (immer teal, kein Farbwechsel je Format).
+  // beim Wechsel über die Zwischen-Segmente slidet (immer Gruen, kein Farbwechsel je Format).
   // Position/Breite werden aus den echten Button-Rects gemessen (offsetLeft/-Width),
   // statt aus einer Gleich-Drittel-Annahme errechnet – Labels sind unterschiedlich lang
   // (z. B. "Transkript" vs. "Audio"), ein Grid mit 1fr-Spalten gleicht das im
@@ -1175,21 +1228,20 @@ function VelaApp() {
         <span className="tb-name">Snatchy</span>
       </div>
       <div className="tb-space" />
+      <div className={`tb-status${activeCount > 0 ? ' busy' : ''}`}>
+        <span className="tb-status-dot" />
+        {activeCount > 0 ? `${activeCount} aktiv` : 'Bereit'}
+        <span className="tb-status-sep" />
+        <span className="tb-status-done">{completedCount} fertig</span>
+      </div>
+      <button className="tb-btn" onClick={() => setShowSettings(true)} aria-label="Einstellungen" title="Einstellungen">
+        <IconGear />
+      </button>
       <div className="tb-wc">
         <button className="tc" title="Minimieren" onClick={() => window.electron.minimize()}><IconMinimize /></button>
         <button className="tc" title="Maximieren" onClick={() => window.electron.maximize()}><IconMaximize /></button>
         <button className="tc tc-x" title="Schließen" onClick={() => window.electron.close()}><IconClose /></button>
       </div>
-    </div>
-  );
-
-  // Statusleiste
-  const StatusBar = () => (
-    <div className="sbar">
-      {activeCount > 0
-        ? <span className="sb-txt"><Spinner size="xs" color="primary" />{activeCount} Download{activeCount > 1 ? 's' : ''} aktiv</span>
-        : <span className="sb-txt">Bereit</span>}
-      <span className="sb-txt">· {completedCount} abgeschlossen</span>
     </div>
   );
 
@@ -1200,7 +1252,6 @@ function VelaApp() {
       <div className="content">
         {DownloadsTab()}
       </div>
-      {StatusBar()}
       {showSettings && (
         <div className="settings-overlay" onClick={() => setShowSettings(false)}>
           <div className="settings-overlay-content" onClick={e => e.stopPropagation()}>

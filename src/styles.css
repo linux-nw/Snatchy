@@ -61,32 +61,6 @@
   letter-spacing: var(--tracking-snug);
 }
 
-/* Einstellungen-Button (links neben dem Warteschlangen-Button) */
-.settings-btn {
-  width: var(--control-md);
-  height: var(--control-md);
-  flex-shrink: 0;
-  border: 1px solid var(--vela-border);
-  background: var(--vela-surface-3);
-  color: var(--vela-text-3);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 100ms, color 100ms, border-color 100ms;
-  -webkit-app-region: no-drag;
-  border-radius: var(--radius-md);
-}
-.settings-btn:hover {
-  background: var(--vela-overlay);
-  border-color: var(--vela-border-strong);
-  color: var(--vela-text);
-}
-.settings-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
 .tb-space {
   flex: 1;
   -webkit-app-region: no-drag;
@@ -123,140 +97,249 @@
   color: #fff !important;
 }
 
+/* ============================================================
+   Richtung: praezises Werkzeug, monochrom.
+   Tiefe nur ueber flache Farbstufen + Haarlinien (keine Schatten,
+   keine Unschaerfe). Gruen nur fuer Aktion und Fortschritt.
+   Signatur: die Download-Zeile ist selbst der Fortschrittsbalken;
+   der Haupt-Button traegt die schraege Kante des Icon-Splitters.
+   ============================================================ */
+
+/* Titelleiste: Status + Einstellungen */
+.tb-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: var(--space-3);
+  font: var(--type-xs);
+  color: var(--vela-text-3);
+  font-variant-numeric: tabular-nums;
+  -webkit-app-region: no-drag;
+}
+.tb-status.busy { color: var(--vela-text-2); }
+.tb-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vela-text-disabled);
+  flex-shrink: 0;
+}
+/* Einziges Dauer-Signal der App: zeigt, dass gerade geladen wird */
+.tb-status.busy .tb-status-dot {
+  background: var(--vela-primary-text);
+  animation: status-blink 1.2s steps(2, jump-none) infinite;
+}
+@keyframes status-blink { 0% { opacity: 1; } 100% { opacity: 0.35; } }
+.tb-status-sep { width: 1px; height: 10px; background: var(--vela-border); }
+
+.tb-btn {
+  width: 36px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--vela-text-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.tb-btn:hover { background: var(--vela-surface-3); color: var(--vela-text); }
+.tb-btn:focus-visible { outline: 2px solid var(--vela-primary-text); outline-offset: -2px; }
+.tb-btn svg { width: 15px; height: 15px; }
+
 /* Content */
 .content {
   flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 24px 24px;
-  gap: 16px;
-  max-width: 880px;
-  width: 100%;
-  margin: 0 auto;
-  box-sizing: border-box;
-  position: relative;
-}
-
-/* Kleiner, proportionaler Abstand über der Eingabe-Karte: die Karte sitzt
-   weit oben (mit etwas Luft zur Titelleiste) und bleibt dort – sie wächst
-   NICHT in die Mitte, weil flex-grow 0 ist. --dl-offset in vh = skaliert
-   sanft mit der Fensterhöhe. Der Regler dafür ist --dl-offset. */
-.dl-top-spacer {
-  --dl-offset: 6vh;
-  flex: 0 1 var(--dl-offset);
   min-height: 0;
+  display: flex;
 }
 
-/* Input Card */
-.input-card {
-  flex-shrink: 0;
-  background: var(--vela-surface);
-  border: 1px solid var(--vela-border);
-  border-radius: var(--radius-xl);
-  padding: 24px;
+.layout {
+  --move: 560ms var(--ease-in-out);
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  transition: grid-template-columns var(--move);
+}
+/* Leerlauf: Verlaufsleiste faehrt weg, alles sitzt symmetrisch in der Mitte */
+.layout.is-idle { grid-template-columns: minmax(0, 1fr) 0px; }
+
+.workspace {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: var(--shadow-sm);
+}
+
+/* Befehlsleiste: die eine Stelle, an der gearbeitet wird */
+.command {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  background: var(--vela-surface);
+  border-bottom: 1px solid var(--vela-border-subtle);
+  transition: max-width var(--move), background-color var(--move), border-color var(--move);
+}
+
+/* Leerlauf vs. aktiv: Abstandshalter oben/unten zentrieren die Eingabe, solange
+   nichts laedt. flex-grow ist animierbar, dadurch gleitet die Eingabe nach oben,
+   sobald die Warteschlange (ebenfalls per flex-grow) auffaehrt. */
+.ws-spacer { flex: 0 0 0; min-height: 0; transition: flex-grow var(--move); }
+.workspace.is-idle .ws-top { flex-grow: 1; }
+.workspace.is-idle .ws-bottom { flex-grow: 1.4; }
+.workspace.is-idle .command {
+  max-width: 780px;
+  background-color: transparent;
+  border-bottom-color: transparent;
+}
+
+/* Weiches Auf-/Zuklappen der Idle-Bereiche ueber grid-template-rows */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--move), opacity 260ms var(--ease-out);
+}
+.collapse-inner { overflow: hidden; min-height: 0; }
+.workspace.is-idle .collapse { grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows var(--move), opacity 400ms 160ms var(--ease-out); }
+/* gap der Befehlsleiste soll zugeklappte Bereiche nicht als Luecke zeigen */
+.workspace:not(.is-idle) .command { row-gap: 0; }
+.workspace:not(.is-idle) .command > .url-row { margin-bottom: var(--space-3); }
+
+.idle-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+}
+.idle-sub { margin: 0; font: var(--type-sm); color: var(--vela-text-3); }
+.workspace.is-idle .opts-row { justify-content: center; }
+.opts-spacer { flex: 1; }
+.workspace.is-idle .opts-spacer { display: none; }
+.idle-mark { width: 48px; height: 48px; border-radius: 11px; margin-bottom: var(--space-2); user-select: none; }
+.idle-title {
+  margin: 0;
+  font: var(--weight-semibold) 20px/1.2 var(--font-sans);
+  letter-spacing: -0.01em;
+  color: var(--vela-text);
+}
+.idle-foot {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
+}
+.idle-history {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+}
+.idle-history .dl-header { border-bottom: 1px solid var(--vela-border-subtle); margin-bottom: var(--space-3); }
+.idle-history .dl-list { max-height: 212px; }
+
+/* Herunterladen-Klick: Pfeil faellt raus und kommt von oben zurueck */
+.cta-ico { display: inline-flex; }
+.cta-ico.fire svg { animation: cta-fire 620ms var(--ease-in-out); }
+@keyframes cta-fire {
+  0%   { transform: translateY(0); opacity: 1; }
+  40%  { transform: translateY(14px); opacity: 0; }
+  41%  { transform: translateY(-14px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.app .snatch-cta:active:not([disabled]) { transform: translateY(1px); }
+
+/* Neue Eintraege fallen von der Eingabe her in die Warteschlange und leuchten kurz */
+.dl-queue .vdlr { animation: row-drop 520ms var(--ease-out) both; }
+@keyframes row-drop {
+  0%   { opacity: 0; transform: translateY(-22px) scale(.98); box-shadow: 0 0 0 1px var(--vela-primary-line); }
+  55%  { opacity: 1; transform: translateY(0) scale(1); box-shadow: 0 0 0 1px var(--vela-primary-line); }
+  100% { box-shadow: 0 0 0 1px transparent; }
+}
+
+.url-row { display: flex; gap: var(--space-2); align-items: stretch; }
+.url-row .vurl { flex: 1; min-width: 0; }
+
+.opts-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.quality-select { width: 168px; }
+.quality-select .vsel { height: 38px; background: var(--vela-bg); border-radius: var(--radius-sm); font: var(--weight-medium) var(--text-sm)/1 var(--font-sans); }
+.quality-select .vsel:hover { border-color: var(--vela-border-strong); }
+.quality-select .vsel:focus { border-color: var(--vela-primary-text); box-shadow: inset 0 0 0 1px var(--vela-primary-text); }
+
+/* Haupt-Button: rechte Kante schraeg wie der weisse Icon-Splitter */
+.app .snatch-cta {
+  height: 44px;
+  padding: 0 var(--space-8) 0 var(--space-5);
+  border: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  font: var(--weight-semibold) var(--text-base)/1 var(--font-sans);
+  flex-shrink: 0;
+  box-shadow: none;
+}
+.app .snatch-cta.vela-btn--neutral { background: var(--vela-surface-3); color: var(--vela-text-3); }
+.app .snatch-cta > span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.app .snatch-cta:focus-visible { box-shadow: inset 0 0 0 2px var(--chalk-400); outline: none; }
+
+/* Plattform-Erkennung: reine Info, rechts in der Optionszeile */
+.platform-badge {
+  font: var(--type-xs);
+  color: var(--vela-text-3);
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.platform-badge-note { color: var(--vela-text-2); }
+
+.pl-anim { animation: slide-in var(--dur-base) var(--ease-out); }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Hinweis-Banner bei fehlenden Backend-Abhängigkeiten (yt-dlp / ffmpeg) */
 .dep-warning {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--vela-warning-soft, oklch(0.42 0.11 75 / 0.18));
-  border: 1px solid var(--vela-warning, oklch(0.78 0.14 75));
-  border-radius: var(--radius-md);
-  color: var(--vela-warning, oklch(0.84 0.12 75));
+  gap: var(--space-2);
+  margin: var(--space-4) var(--space-6) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--vela-warning-soft);
+  border-left: 2px solid var(--vela-warning);
+  color: var(--vela-warning);
   font: var(--type-sm);
   line-height: 1.4;
   flex-shrink: 0;
 }
-.dep-warning svg {
-  flex-shrink: 0;
-  margin-top: 1px;
-}
+.dep-warning svg { flex-shrink: 0; margin-top: 1px; }
 
-/* Weitere Abstand nach oben */
-.opts-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.pl-anim {
-  animation: slide-in 200ms ease-out;
-}
-
-/* Plattform-Badge: rein informativ, zeigt an, welche Seite erkannt wurde. */
-.platform-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font: var(--type-xs);
-  color: var(--vela-text-3);
-  animation: slide-in 150ms ease-out;
-}
-.platform-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--vela-primary);
-  flex-shrink: 0;
-}
-.platform-badge-note {
-  color: var(--vela-success);
-}
-
-@keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Warteschlange + Verlauf nebeneinander als zwei gleich hohe Spalten, jede
-   mit eigenem, unabhängigem Scrollbereich — Eingabe-Karte bleibt oben fix. */
-.dl-sections {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-/* Schlanke, dezente Scrollbar für alle scrollenden Bereiche (Warteschlange-
-   /Verlauf-Listen, Einstellungen, Transkript-Textfeld) statt der klobigen
-   Standard-Scrollbar. Deutlicher Track-Rand oben/unten, damit der Balken
-   sichtbar abgesetzt ist statt bis an die Kante zu laufen. */
+/* Schlanke, dezente Scrollbar für alle scrollenden Bereiche */
 .dl-list,
 .settings-overlay-content .settings,
 .vtxt-area {
   scrollbar-width: thin;
   scrollbar-color: var(--vela-border) transparent;
 }
-
 .dl-list::-webkit-scrollbar,
 .settings-overlay-content .settings::-webkit-scrollbar,
-.vtxt-area::-webkit-scrollbar {
-  width: 6px;
-}
-
+.vtxt-area::-webkit-scrollbar { width: 6px; }
 .dl-list::-webkit-scrollbar-track,
 .settings-overlay-content .settings::-webkit-scrollbar-track,
-.vtxt-area::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 28px 0;
-}
-
+.vtxt-area::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }
 .dl-list::-webkit-scrollbar-thumb,
 .settings-overlay-content .settings::-webkit-scrollbar-thumb,
 .vtxt-area::-webkit-scrollbar-thumb {
@@ -265,7 +348,6 @@
   border: 1px solid transparent;
   background-clip: padding-box;
 }
-
 .dl-list::-webkit-scrollbar-thumb:hover,
 .settings-overlay-content .settings::-webkit-scrollbar-thumb:hover,
 .vtxt-area::-webkit-scrollbar-thumb:hover {
@@ -273,46 +355,63 @@
   background-clip: padding-box;
 }
 
-/* Download Section — Warteschlange oder Verlauf, eine Spalte im .dl-sections
-   Grid; die Liste darin scrollt unabhängig von der jeweils anderen Spalte. */
+/* Sektionen */
 .dl-section {
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
+.dl-queue { flex: 1 1 0; padding: var(--space-5) var(--space-6) var(--space-4); transition: flex-grow var(--move), padding var(--move), opacity 300ms 300ms var(--ease-out); }
+.workspace.is-idle .dl-queue { flex-grow: 0; padding-top: 0; padding-bottom: 0; opacity: 0; transition: flex-grow var(--move), padding var(--move), opacity 120ms; }
+/* Zeilen-Einfall erst, wenn die Eingabe oben ist */
+.dl-queue .vdlr { animation-delay: 280ms; }
+.dl-queue .dl-header { border-bottom: 1px solid var(--vela-border-subtle); margin-bottom: var(--space-3); }
+
+.history-rail {
+  min-width: 0;
+  background: var(--vela-bg);
+  border-left: 1px solid var(--vela-border-subtle);
+  padding: var(--space-5) var(--space-3) var(--space-3) var(--space-4);
+  transition: opacity var(--move), border-color var(--move);
+}
+/* feste Innenbreite, damit beim Ein-/Ausfahren nichts zusammengequetscht wird */
+.history-rail > * { min-width: 290px; }
+.layout.is-idle .history-rail { opacity: 0; border-left-color: transparent; }
 
 .dl-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 0 12px;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0 0 var(--space-3);
+  min-height: 24px;
   flex-shrink: 0;
 }
-
 .dl-htitle {
-  font: var(--type-caption);
+  font: var(--weight-semibold) var(--text-sm)/1 var(--font-sans);
+  color: var(--vela-text);
+}
+.dl-count {
+  font: var(--type-xs);
+  font-family: var(--font-mono);
   color: var(--vela-text-3);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
+  font-variant-numeric: tabular-nums;
 }
 
 .dl-clear {
   background: transparent;
   border: none;
   color: var(--vela-text-3);
-  font: var(--type-caption);
+  font: var(--type-xs);
   cursor: pointer;
-  padding: 3px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  transition: background 100ms, color 100ms;
+  transition: background var(--dur-fast), color var(--dur-fast);
 }
+.dl-clear:hover { background: var(--vela-danger-soft); color: var(--vela-danger); }
+.dl-clear:focus-visible { outline: 2px solid var(--vela-primary-text); outline-offset: 1px; }
 
-.dl-clear:hover {
-  background: var(--vela-danger-soft);
-  color: var(--vela-danger);
-}
-
+/* Listen: Zeilen mit Haarlinien statt einzelner Karten */
 .dl-list {
   flex: 1;
   min-height: 0;
@@ -320,49 +419,33 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-right: 4px;
+  padding-right: 2px;
 }
 
 .empty {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  color: var(--vela-text-3);
-  padding: 4vh 20px 40px;
-}
-
-.empty p {
-  font: var(--type-body);
-  margin: 0;
-  text-align: center;
-  max-width: 280px;
-}
-
-/* Status Bar */
-.sbar {
-  height: 24px;
-  background: var(--vela-surface);
+  gap: var(--space-1);
+  padding: var(--space-4) 0;
   border-top: 1px solid var(--vela-border-subtle);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 12px;
-  flex-shrink: 0;
-  -webkit-app-region: no-drag;
+}
+.empty-title {
+  margin: 0;
+  font: var(--weight-medium) var(--text-sm)/1.4 var(--font-sans);
+  color: var(--vela-text-2);
+}
+.empty-text {
+  margin: 0;
+  font: var(--type-sm);
+  color: var(--vela-text-3);
+  max-width: 46ch;
 }
 
-.sb-txt {
-  font: var(--type-caption);
-  color: var(--vela-text-3);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  -webkit-app-region: no-drag;
+@media (prefers-reduced-motion: reduce) {
+  /* Nur Dauer-Animationen abschalten. Die einmaligen Uebergaenge (Eingabe gleitet
+     hoch, Verlauf faehrt ein, Zeilen fallen ein) bleiben bewusst aktiv: Windows meldet
+     "reduzieren" schon, wenn nur die System-Animationseffekte aus sind. */
+  .tb-status-dot { animation: none !important; }
 }
 
 /* Settings */
@@ -466,42 +549,46 @@
 .vinp { flex: 1; background: transparent; border: none; outline: none; color: var(--vela-text); font: var(--type-body); padding: 0 12px; }
 
 /* Vela UrlBar */
-.vurl { display: flex; align-items: center; background: var(--vela-surface-2); border: 1px solid var(--vela-border); border-radius: var(--radius-lg); overflow: hidden; transition: border-color 150ms, box-shadow 150ms; height: 48px; cursor: text; }
-.vurl:focus-within { border-color: var(--vela-primary-line); box-shadow: var(--ring-focus); }
+.vurl { display: flex; align-items: center; background: var(--vela-bg); border: 1px solid var(--vela-border); border-radius: var(--radius-sm); overflow: hidden; transition: border-color 150ms, box-shadow 150ms; height: 44px; cursor: text; }
+.vurl:focus-within { border-color: var(--vela-primary-text); box-shadow: inset 0 0 0 1px var(--vela-primary-text); }
 .vurl.filled { border-color: var(--vela-border-strong); }
 .vurl-inp { flex: 1; height: 100%; background: transparent; border: none; outline: none; color: var(--vela-text); font-family: var(--font-mono); font-size: 13px; padding: 0 14px; min-width: 0; cursor: text; }
 .vurl-inp::placeholder { font-family: var(--font-sans); font-size: 14px; color: var(--vela-text-3); }
 .vurl-clr { width: 34px; height: 100%; background: transparent; border: none; color: var(--vela-text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 100ms; }
 .vurl-clr:hover { color: var(--vela-danger); }
-.vurl-paste { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 14px; background: var(--vela-surface-3); border: none; border-left: 1px solid var(--vela-border); color: var(--vela-text-2); font: var(--type-sm); cursor: pointer; transition: background 120ms, color 120ms; flex-shrink: 0; }
-.vurl-paste:hover { background: var(--vela-primary-soft); color: var(--vela-primary); }
+.vurl-paste { display: flex; align-items: center; gap: 6px; height: 100%; padding: 0 14px; background: transparent; border: none; border-left: 1px solid var(--vela-border); color: var(--vela-text-2); font: var(--type-sm); cursor: pointer; transition: background 120ms, color 120ms; flex-shrink: 0; }
+.vurl-paste:hover { background: var(--vela-primary-soft); color: var(--vela-primary-text); }
 .vurl-paste svg, .vurl-clr svg { width: 15px; height: 15px; }
 
 /* Vela FormatToggle — inhaltsbreite Segmente (Labels sind unterschiedlich lang)
-   mit einer einzigen gleitenden Markierung (immer teal). Position/Breite der
+   mit einer einzigen gleitenden Markierung (immer Gruen). Position/Breite der
    Markierung werden per JS aus den echten Button-Rects gesetzt (siehe FormatToggle). */
-.vft { position: relative; display: inline-flex; background: var(--vela-surface-3); border-radius: var(--radius-md); padding: 3px; gap: 2px; border: 1px solid var(--vela-border-subtle); }
+.app .vft { position: relative; display: inline-flex; height: 38px; background: var(--vela-bg); border-radius: var(--radius-sm); padding: 3px; gap: 0; border: 1px solid var(--vela-border); box-sizing: border-box; }
+/* Gleitende Markierung: hellere Flaeche mit gruener Unterkante statt gefuellter Pille */
 .vft-indicator {
   position: absolute;
   top: 3px;
+  bottom: 3px;
   left: 0;
-  height: 32px;
-  background: var(--vela-primary);
-  border-radius: calc(var(--radius-md) - 2px);
+  background: var(--vela-surface-3);
+  border-radius: 3px;
+  box-shadow: inset 0 -2px 0 var(--vela-primary-text);
   transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1), width 280ms cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 0;
   pointer-events: none;
 }
-.vft-btn { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; border: none; background: transparent; cursor: pointer; border-radius: calc(var(--radius-md) - 2px); padding: 0 16px; height: 32px; font: var(--type-sm); font-weight: 500; color: var(--vela-text-3); transition: color 200ms ease; }
-.vft-btn.on { color: var(--vela-on-primary); }
+.vft .vft-btn { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; border: none; background: transparent; cursor: pointer; border-radius: 3px; padding: 0 14px; height: 100%; font: var(--weight-medium) var(--text-sm)/1 var(--font-sans); color: var(--vela-text-3); transition: color var(--dur-base) ease; }
+.vft-btn.on { color: var(--vela-text); }
+.vft-btn.on svg { color: var(--vela-primary-text); }
 /* Überschreibt den grauen Hover aus dem Design-System-Bundle (gleicher Klassenname
-   .vft-btn dort, Bundle-Regel kennt aber nur seine eigene .vft-active-Klasse und
-   greift daher auch bei UNSEREM aktiven ".on"-Button – der graue Overlay lag dann
-   über der teal Markierung). Beide Zustände hier explizit neutralisiert. */
-.vft .vft-btn:hover:not(.on) { background: transparent; color: var(--vela-text-3); }
-.vft .vft-btn.on:hover { background: transparent; color: var(--vela-on-primary); }
-.vft-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
-.vft-tag { font-size: 9px; font-weight: 700; letter-spacing: .07em; background: oklch(0 0 0/.22); padding: 1px 4px; border-radius: 3px; }
+   .vft-btn dort, Bundle-Regel kennt aber nur seine eigene .vft-active-Klasse). */
+.vft .vft-btn:hover:not(.on):not(.vft-disabled) { background: transparent; color: var(--vela-text-2); }
+.vft .vft-btn.on:hover { background: transparent; color: var(--vela-text); }
+.vft-btn:focus-visible { outline: 2px solid var(--vela-primary-text); outline-offset: -2px; }
+.vft-btn svg { width: 15px; height: 15px; flex-shrink: 0; transition: color var(--dur-base) ease; }
+/* Dateityp als leiser Mono-Zusatz statt Kaestchen */
+.vft-tag { font: 500 10px/1 var(--font-mono); letter-spacing: .04em; color: var(--vela-text-disabled); background: none; padding: 0; transition: color var(--dur-base) ease; }
+.vft-btn.on .vft-tag { color: var(--vela-text-3); }
 /* Format passt nicht zur eingefügten URL (z. B. Podcast bei einem YouTube-Link) */
 .vft-btn.vft-disabled { opacity: .35; cursor: not-allowed; }
 .vft .vft-btn.vft-disabled:hover { background: transparent; color: var(--vela-text-3); }
@@ -519,47 +606,81 @@
 .vpm-name { font: var(--type-sm); color: var(--vela-text); line-height: 1.3; }
 .vpm-desc { font: var(--type-xs); color: var(--vela-text-3); margin-top: 2px; }
 .vpm-dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--vela-border-strong); flex-shrink: 0; margin-left: auto; display: flex; align-items: center; justify-content: center; transition: border-color 150ms; }
-.vpm-opt.vpm-active .vpm-dot { border-color: var(--vela-primary); }
-.vpm-dot-in { width: 8px; height: 8px; border-radius: 50%; background: var(--vela-primary); opacity: 0; transition: opacity 150ms; }
+.vpm-opt.vpm-active .vpm-dot { border-color: var(--vela-primary-text); }
+.vpm-dot-in { width: 8px; height: 8px; border-radius: 50%; background: var(--vela-primary-text); opacity: 0; transition: opacity 150ms; }
 .vpm-opt.vpm-active .vpm-dot-in { opacity: 1; }
 
-/* Vela DownloadRow */
-.vdlr { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--vela-surface-2); border-radius: var(--radius-md); border: 1px solid var(--vela-border-subtle); transition: background 150ms; }
-.vdlr:hover { background: oklch(0.25 .018 257); }
-.vdlr-clickzone { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+/* Vela DownloadRow — ruhige, flache Karte; Fortschritt als duenner Balken unter dem Namen */
+.vdlr { display: flex; align-items: center; gap: var(--space-3); padding: 10px var(--space-3); background: var(--vela-surface); border: 1px solid var(--vela-border-subtle); border-radius: var(--radius-md); transition: background var(--dur-fast), border-color var(--dur-fast); animation: row-in var(--dur-base) var(--ease-out) both; }
+.vdlr:hover { background: var(--vela-surface-2); border-color: var(--vela-border); }
+@keyframes row-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.vdlr-live.is-downloading { border-color: var(--vela-border); }
+.vdlr-live.is-error { border-color: oklch(0.66 0.20 25 / 0.35); }
+
+.vdlr-clickzone { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-width: 0; }
 .vdlr-clickzone.vdlr-toggleable { cursor: pointer; }
-.vdlr-clickzone.vdlr-toggleable:hover .vdlr-name { color: var(--vela-primary-hover); }
+.vdlr-clickzone.vdlr-toggleable:hover .vdlr-name { color: var(--vela-primary-text); }
 .vdlr-ico { width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
 .vdlr-thumb { width: 100%; height: 100%; object-fit: cover; }
 .vdlr-ico.vdli-video { background: var(--vela-primary-soft); color: var(--vela-video); }
 .vdlr-ico.vdli-audio { background: var(--vela-secondary-soft); color: var(--vela-audio); }
-.vdlr-ico.vdli-transcript { background: var(--vela-tertiary-soft, oklch(0.72 0.16 300 / 0.16)); color: var(--vela-tertiary, oklch(0.78 0.15 300)); }
+.vdlr-ico.vdli-transcript { background: var(--vela-tertiary-soft); color: var(--vela-tertiary); }
 .vdlr-ico svg { width: 17px; height: 17px; }
 .vdlr-body { flex: 1; min-width: 0; }
-.vdlr-name { font: var(--type-sm); color: var(--vela-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
-.vdlr-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.vdlr-name { font: var(--weight-medium) var(--text-sm)/1.3 var(--font-sans); color: var(--vela-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.vdlr-meta { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 6px; }
+.history-rail .vdlr-meta { margin-bottom: 0; }
 .vdlr-size { font-family: var(--font-mono); font-size: 11px; color: var(--vela-text-3); font-variant-numeric: tabular-nums; }
-.vdlr-st { font: var(--type-xs); color: var(--vela-text-3); }
+.vdlr-st { font: var(--type-xs); color: var(--vela-text-3); font-variant-numeric: tabular-nums; }
 .vdlr-st.st-done { color: var(--vela-success); }
 .vdlr-st.st-error { color: var(--vela-danger); }
-.vdlr-st.st-downloading { color: var(--teal-400); }
+.vdlr-st.st-downloading { color: var(--vela-primary-text); }
 .vdlr-st.st-paused { color: var(--vela-warning); }
 .vdlr-err { font: var(--type-xs); color: var(--vela-danger); margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vdlr-track { width: 100%; height: 3px; background: var(--vela-surface-3); border-radius: var(--radius-full); overflow: hidden; }
 .vdlr-fill { height: 100%; border-radius: var(--radius-full); transition: width 400ms ease-out; position: relative; }
-.vdlr-fill.fv { background: var(--vela-primary); }
+.vdlr-fill.fv { background: var(--vela-primary-text); }
 .vdlr-fill.fa { background: var(--vela-secondary); }
-.vdlr-fill.ft { background: var(--vela-tertiary, oklch(0.78 0.15 300)); }
+.vdlr-fill.ft { background: var(--vela-tertiary); }
 .vdlr-fill.fd { background: var(--vela-success); }
 .vdlr-fill.fe { background: var(--vela-danger); }
 .vdlr-fill.fq { background: var(--vela-surface-3); overflow: hidden; }
-.vdlr-fill.fq::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--vela-primary), transparent); animation: vela-dl-sweep 1.4s ease-in-out infinite; }
+.vdlr-fill.fq::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--vela-primary-text), transparent); animation: vela-dl-sweep 1.4s ease-in-out infinite; }
 @keyframes vela-dl-sweep { from { transform: translateX(-100%); } to { transform: translateX(220%); } }
-.vdlr-btns { display: flex; gap: 3px; flex-shrink: 0; }
+.vdlr-btns { display: flex; gap: 2px; flex-shrink: 0; }
 .vdlr-btn { width: 28px; height: 28px; border-radius: var(--radius-sm); border: none; background: transparent; color: var(--vela-text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 100ms, color 100ms; }
 .vdlr-btn:hover { background: var(--vela-surface-3); color: var(--vela-text); }
 .vdlr-btn.vdlb-danger:hover { background: var(--vela-danger-soft); color: var(--vela-danger); }
 .vdlr-btn svg { width: 14px; height: 14px; }
+
+/* Speicherort-Zeile im Leerlauf */
+.queue-empty-dest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  background: var(--vela-surface);
+  border: 1px solid var(--vela-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--vela-text-3);
+}
+.queue-empty-dest svg { width: 14px; height: 14px; flex-shrink: 0; }
+.queue-empty-path { font: var(--type-xs); font-family: var(--font-mono); color: var(--vela-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 320px; }
+.queue-empty-btn {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--vela-text-2);
+  font: var(--weight-medium) var(--text-xs)/1 var(--font-sans);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.queue-empty-btn:hover { background: var(--vela-surface-3); color: var(--vela-text); }
+.queue-empty-btn:focus-visible { outline: 2px solid var(--vela-primary-text); outline-offset: 1px; }
 
 /* Verlauf: Zeile + ausklappbares Transkript-Textfeld */
 .vhist-item { display: flex; flex-direction: column; gap: 6px; }
@@ -578,12 +699,12 @@
 .vbtn.primary { background: var(--vela-primary); color: var(--vela-on-primary); box-shadow: var(--glow-primary), var(--edge-highlight); }
 .vbtn.primary:hover:not([disabled]) { background: var(--vela-primary-hover); }
 .vbtn.neutral { background: var(--vela-surface-3); color: var(--vela-text); border-color: var(--vela-border); box-shadow: var(--edge-highlight); }
-.vbtn.neutral:hover:not([disabled]) { background: var(--vela-overlay, #2e3140); border-color: var(--vela-border-strong); }
+.vbtn.neutral:hover:not([disabled]) { background: var(--vela-overlay); border-color: var(--vela-border-strong); }
 .vbtn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* Vela Badge */
 .vbadge { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; white-space: nowrap; font-weight: 500; letter-spacing: .02em; font-size: 11px; padding: 3px 9px; }
-.vbadge.primary { background: var(--vela-primary-soft); color: var(--teal-300); }
+.vbadge.primary { background: var(--vela-primary-soft); color: var(--vela-primary-text); }
 .vbadge.success { background: var(--vela-success-soft); color: var(--vela-success); }
 .vbadge.danger { background: var(--vela-danger-soft); color: var(--vela-danger); }
 .vbadge.video { background: var(--vela-primary-soft); color: var(--vela-video); }
@@ -596,7 +717,7 @@
 .vspin.xs svg { width: 12px; height: 12px; }
 .vspin.sm svg { width: 16px; height: 16px; }
 .vspin.md svg { width: 22px; height: 22px; }
-.vspin.primary { color: var(--vela-primary); }
+.vspin.primary { color: var(--vela-primary-text); }
 .vspin.muted { color: var(--vela-text-3); }
 
 /* Vela Select */
@@ -726,7 +847,7 @@
   color: var(--vela-text);
   flex: 1;
 }
-.podpick-title svg { width: 17px; height: 17px; color: var(--vela-primary); }
+.podpick-title svg { width: 17px; height: 17px; color: var(--vela-primary-text); }
 
 .podpick-status {
   display: flex;
@@ -782,7 +903,7 @@
   white-space: nowrap;
 }
 .podpick-chip:hover {
-  background: var(--vela-overlay, #2e3140);
+  background: var(--vela-overlay);
   border-color: var(--vela-border-strong);
   color: var(--vela-text);
 }
