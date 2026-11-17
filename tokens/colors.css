@@ -1,99 +1,119 @@
 /* ============================================================
    Vela — Color tokens
-   Dark-first palette. Calm slate-blue canvas, teal primary,
-   indigo secondary. Video = teal, Audio = indigo.
+   Abgeleitet vom App-Icon: Ink-Schwarz (#0a0a0f), Kreideweiss
+   (#f5f5f5) und Moosgruen (#4a7234). Video = Gruen, Audio = Kreide.
+   Gruen als Flaeche (weisser Text, 5.1:1), helleres Gruen fuer
+   Text/Icons auf Schwarz (8.3:1).
    All colors in oklch for perceptual consistency.
    ============================================================ */
 
 :root {
   /* ---- Brand scales -------------------------------------- */
-  /* Teal (primary) */
-  --teal-300: oklch(0.84 0.10 195);
-  --teal-400: oklch(0.79 0.12 195);
-  --teal-500: oklch(0.72 0.12 195);
-  --teal-600: oklch(0.66 0.12 196);
-  --teal-700: oklch(0.58 0.11 197);
+  /* Moss (primary) — Icon-Gruen = moss-500 (#4a7234) */
+  --moss-300: oklch(0.80 0.13 136);
+  --moss-400: oklch(0.72 0.13 136);
+  --moss-450: oklch(0.56 0.11 136);
+  --moss-500: oklch(0.507 0.101 135.6);
+  --moss-600: oklch(0.45 0.092 135);
+  --moss-700: oklch(0.36 0.075 135);
 
-  /* Indigo (secondary / audio) */
-  --indigo-300: oklch(0.78 0.10 272);
-  --indigo-400: oklch(0.71 0.13 274);
-  --indigo-500: oklch(0.66 0.14 275);
-  --indigo-600: oklch(0.59 0.15 276);
-  --indigo-700: oklch(0.52 0.15 277);
+  /* Chalk (secondary / audio) — Icon-Weiss */
+  --chalk-300: oklch(0.985 0 0);
+  --chalk-400: oklch(0.97 0 0);
+  --chalk-500: oklch(0.90 0.004 285);
+  --chalk-600: oklch(0.82 0.006 285);
+  --chalk-700: oklch(0.70 0.008 285);
 
-  /* Slate-blue neutral canvas — bewusst dunkel & ruhig gehalten */
-  --slate-950: oklch(0.115 0.012 257);
-  --slate-900: oklch(0.145 0.013 257);
-  --slate-850: oklch(0.175 0.014 257);
-  --slate-800: oklch(0.215 0.015 257);
-  --slate-700: oklch(0.28 0.016 257);
-  --slate-600: oklch(0.38 0.018 257);
-  --slate-500: oklch(0.50 0.014 257);
-  --slate-400: oklch(0.62 0.012 257);
-  --slate-300: oklch(0.74 0.010 257);
-  --slate-200: oklch(0.85 0.008 257);
-  --slate-100: oklch(0.93 0.006 257);
-  --slate-050: oklch(0.97 0.004 257);
+  /* Kompatibilitaets-Aliase fuer aeltere Komponenten (ui_kits, cards) */
+  --teal-300: var(--moss-300);
+  --teal-400: var(--moss-400);
+  --teal-500: var(--moss-500);
+  --teal-600: var(--moss-600);
+  --teal-700: var(--moss-700);
+  --indigo-300: var(--chalk-300);
+  --indigo-400: var(--chalk-400);
+  --indigo-500: var(--chalk-500);
+  --indigo-600: var(--chalk-600);
+  --indigo-700: var(--chalk-700);
+
+  /* Ink-Neutrals: fast unbunt, leicht kuehl wie der Icon-Hintergrund */
+  --slate-950: oklch(0.147 0.011 285);
+  --slate-900: oklch(0.172 0.010 285);
+  --slate-850: oklch(0.198 0.010 285);
+  --slate-800: oklch(0.235 0.010 285);
+  --slate-700: oklch(0.30 0.010 285);
+  --slate-600: oklch(0.40 0.010 285);
+  --slate-500: oklch(0.52 0.008 285);
+  --slate-400: oklch(0.64 0.006 285);
+  --slate-300: oklch(0.76 0.005 285);
+  --slate-200: oklch(0.86 0.004 285);
+  --slate-100: oklch(0.93 0.002 285);
+  --slate-050: oklch(0.97 0 0);
 
   /* ---- Semantic surfaces (dark theme) -------------------- */
   --vela-bg:          var(--slate-950);   /* window background, deepest */
   --vela-surface:     var(--slate-900);   /* panels, sidebar */
   --vela-surface-2:   var(--slate-850);   /* raised cards, list rows */
   --vela-surface-3:   var(--slate-800);   /* inputs, hover fills */
-  --vela-overlay:     oklch(0.27 0.02 257);  /* menus, tooltips, popovers */
+  --vela-surface-hover: oklch(0.255 0.010 285);
+  --vela-overlay:     oklch(0.27 0.010 285);  /* menus, tooltips, popovers */
 
-  --vela-border:        oklch(0.34 0.02 257 / 0.65);
-  --vela-border-strong: oklch(0.42 0.02 257);
-  --vela-border-subtle: oklch(0.30 0.02 257 / 0.5);
+  --vela-border:        oklch(0.36 0.010 285 / 0.65);
+  --vela-border-strong: oklch(0.46 0.010 285);
+  --vela-border-subtle: oklch(0.30 0.010 285 / 0.55);
 
   /* ---- Text ---------------------------------------------- */
   --vela-text:          var(--slate-050);
   --vela-text-2:        var(--slate-300);
   --vela-text-3:        var(--slate-400);
   --vela-text-disabled: var(--slate-500);
-  --vela-text-on-accent: oklch(0.17 0.02 220);  /* dark ink on bright teal */
+  --vela-text-on-accent: var(--chalk-400);  /* Kreide auf Moosgruen */
 
-  /* ---- Primary (teal) ------------------------------------ */
-  --vela-primary:        var(--teal-500);
-  --vela-primary-hover:  var(--teal-400);
-  --vela-primary-press:  var(--teal-600);
-  --vela-primary-soft:   oklch(0.72 0.12 195 / 0.16);
-  --vela-primary-line:   oklch(0.72 0.12 195 / 0.40);
+  /* ---- Primary (moss) ------------------------------------ */
+  --vela-primary:        var(--moss-500);
+  --vela-primary-hover:  var(--moss-450);
+  --vela-primary-press:  var(--moss-600);
+  --vela-primary-text:   var(--moss-400);   /* Gruen als Text-/Iconfarbe auf dunkel */
+  --vela-primary-soft:   oklch(0.72 0.13 136 / 0.12);
+  --vela-primary-line:   oklch(0.72 0.13 136 / 0.45);
   --vela-on-primary:     var(--vela-text-on-accent);
 
-  /* ---- Secondary (indigo) -------------------------------- */
-  --vela-secondary:       var(--indigo-500);
-  --vela-secondary-hover: var(--indigo-400);
-  --vela-secondary-soft:  oklch(0.66 0.14 275 / 0.18);
-  --vela-secondary-line:  oklch(0.66 0.14 275 / 0.42);
+  /* ---- Secondary (chalk) --------------------------------- */
+  --vela-secondary:       var(--chalk-400);
+  --vela-secondary-hover: var(--chalk-300);
+  --vela-secondary-soft:  oklch(0.97 0 0 / 0.09);
+  --vela-secondary-line:  oklch(0.97 0 0 / 0.32);
+
+  /* ---- Tertiary (Transkript) ----------------------------- */
+  --vela-tertiary:      oklch(0.80 0.12 300);
+  --vela-tertiary-soft: oklch(0.80 0.12 300 / 0.14);
 
   /* ---- Format accents ------------------------------------ */
-  --vela-video: var(--teal-400);     /* MP4 / video */
-  --vela-audio: var(--indigo-400);   /* MP3 / audio */
+  --vela-video: var(--moss-400);     /* MP4 / video */
+  --vela-audio: var(--chalk-400);    /* MP3 / audio */
 
   /* ---- Semantic states ----------------------------------- */
-  --vela-success:      oklch(0.74 0.14 156);
-  --vela-success-soft: oklch(0.74 0.14 156 / 0.16);
-  --vela-warning:      oklch(0.81 0.13 82);
-  --vela-warning-soft: oklch(0.81 0.13 82 / 0.16);
-  --vela-danger:       oklch(0.67 0.18 22);
-  --vela-danger-soft:  oklch(0.67 0.18 22 / 0.16);
-  --vela-info:         oklch(0.71 0.11 236);
-  --vela-info-soft:    oklch(0.71 0.11 236 / 0.16);
+  --vela-success:      oklch(0.76 0.15 155);
+  --vela-success-soft: oklch(0.76 0.15 155 / 0.15);
+  --vela-warning:      oklch(0.82 0.14 75);
+  --vela-warning-soft: oklch(0.82 0.14 75 / 0.15);
+  --vela-danger:       oklch(0.66 0.20 25);
+  --vela-danger-soft:  oklch(0.66 0.20 25 / 0.15);
+  --vela-info:         oklch(0.74 0.11 236);
+  --vela-info-soft:    oklch(0.74 0.11 236 / 0.15);
 
   /* ---- Focus ring ---------------------------------------- */
-  --vela-focus: oklch(0.79 0.12 195 / 0.55);
+  --vela-focus: oklch(0.72 0.13 136 / 0.45);
 
   /* ---- Accent gradient (progress, hero glints) ----------- */
-  --vela-gradient: linear-gradient(90deg, var(--teal-500), var(--indigo-500));
+  --vela-gradient: linear-gradient(90deg, var(--moss-500), var(--moss-400));
   --vela-gradient-soft: linear-gradient(135deg,
-      oklch(0.72 0.12 195 / 0.14), oklch(0.66 0.14 275 / 0.14)); /* @kind other */
+      oklch(0.97 0 0 / 0.05), oklch(0.507 0.101 135.6 / 0.14)); /* @kind other */
 
   /* ---- Surface aliases (convenience) -------------------- */
   --vela-surface-1: var(--vela-surface);   /* = slate-900 */
 
   /* ---- Window chrome ------------------------------------- */
-  --vela-titlebar: oklch(0.135 0.013 257 / 0.92);
-  /* Flacher, ruhiger Hintergrund ohne farbige Glints */
+  --vela-titlebar: oklch(0.135 0.011 285 / 0.94);
   --vela-mica: none;
 }
