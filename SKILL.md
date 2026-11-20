@@ -4,7 +4,7 @@ description: Use this skill to generate well-branded interfaces and assets for V
 user-invocable: true
 ---
 
-Read the README.md file within this skill, and explore the other available files.
+Read the design-system.md file within this skill, and explore the other available files.
 
 If creating visual artifacts (slides, mocks, throwaway prototypes, etc), copy assets out and create static HTML files for the user to view. If working on production code, you can copy assets and read the rules here to become an expert in designing with this brand.
 
