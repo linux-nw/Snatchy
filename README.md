@@ -1,70 +1,70 @@
 # Snatchy
 
-**Status:** 🟢 Aktiv · Version 1.0.0
+**Status:** 🟢 Active · Version 1.0.0
 
-Desktop-App (Electron) für Windows zum Herunterladen von Video und Audio über yt-dlp.
+Desktop app (Electron) for Windows to download video and audio via yt-dlp.
 
-**Name:** "To snatch" heißt schnappen. Snatchy schnappt sich Videos und Musik.
+**Name:** "To snatch" means to grab. Snatchy grabs videos and music.
 
 ---
 
 ## Download
 
-➡️ [Neueste Version](https://github.com/linux-nw/snatchy/releases/latest) als Installer (`Snatchy Setup x.y.z.exe`) oder portabel (`Snatchy x.y.z.exe`).
+➡️ [Latest version](https://github.com/linux-nw/snatchy/releases/latest) as an installer (`Snatchy Setup x.y.z.exe`) or portable (`Snatchy x.y.z.exe`).
 
-Windows SmartScreen kann beim ersten Start "Unbekannter Herausgeber" melden, weil die Datei nicht signiert ist. Mit "Weitere Informationen" und "Trotzdem ausführen" startet sie.
-
----
-
-## Nutzung
-
-1. Link zu einem Video oder einer Playlist einfügen.
-2. MP4 (Video) oder MP3 (Audio) wählen.
-3. Downloads laufen in der Warteschlange, Fortschritt und Verlauf stehen in der App.
-
-Im Installer enthalten, nichts davon musst du selbst installieren: yt-dlp, ffmpeg, deno und aria2c.
-
-Optional und nicht enthalten:
-
-- Playwright Chromium für Seiten, die yt-dlp nicht direkt kann: `npx playwright install chromium`
-- Whisper für Transkripte von Videos ohne Untertitel (braucht Python): `pip install -U openai-whisper`
+Windows SmartScreen may show "Unknown publisher" on first launch because the file is not signed. Click "More info" and then "Run anyway" to start it.
 
 ---
 
-## Selbst bauen
+## Usage
 
-Voraussetzungen: Windows, Node.js 18 oder neuer.
+1. Paste a link to a video or a playlist.
+2. Choose MP4 (video) or MP3 (audio).
+3. Downloads run in a queue, progress and history are shown in the app.
+
+Included in the installer, you do not have to install any of these yourself: yt-dlp, ffmpeg, deno and aria2c.
+
+Optional and not included:
+
+- Playwright Chromium for sites yt-dlp cannot handle directly: `npx playwright install chromium`
+- Whisper for transcripts of videos without subtitles (needs Python): `pip install -U openai-whisper`
+
+---
+
+## Build it yourself
+
+Requirements: Windows, Node.js 18 or newer.
 
 ```bash
 npm install
 npm run dist
 ```
 
-`npm run dist` lädt die enthaltenen Programme per `scripts/fetch-binaries.js` (mit SHA-256-Prüfung) und baut Installer und portable Version nach `dist/`. Zum Entwickeln einmal `npm run fetch-binaries`, dann `npm start`. Tests: `npm test`.
+`npm run dist` fetches the bundled programs via `scripts/fetch-binaries.js` (with SHA-256 verification) and builds the installer and portable version into `dist/`. For development run `npm run fetch-binaries` once, then `npm start`. Tests: `npm test`.
 
 ---
 
-## Repo-Struktur
+## Repo structure
 
 ```
-src/        App (Hauptprozess, Oberfläche, Downloader, Anmeldung)
-scripts/    Build und Download der enthaltenen Programme
-tests/      Tests
-assets/     Icons
-tokens/     Design-Tokens
-components/ Oberflächen-Komponenten
+src/        app (main process, UI, downloader, login)
+scripts/    build and download of the bundled programs
+tests/      tests
+assets/     icons
+tokens/     design tokens
+components/ UI components
 ```
 
-Das Design System ist in [design-system.md](design-system.md) beschrieben.
+The design system is described in [design-system.md](design-system.md).
 
 ---
 
-## Datenschutz
+## Privacy
 
-Keine Telemetrie. Downloads laufen direkt zwischen deinem Rechner und der jeweiligen Seite.
+No telemetry. Downloads go directly between your computer and the respective site.
 
 ---
 
-## Lizenz
+## License
 
-Noch offen.
+Not decided yet.
