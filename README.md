@@ -67,4 +67,4 @@ No telemetry. Downloads go directly between your computer and the respective sit
 
 ## License
 
-Not decided yet.
+[PolyForm Noncommercial 1.0.0](LICENSE). Personal and non-commercial use is free. For commercial use, please get in touch.
