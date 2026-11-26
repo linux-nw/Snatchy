@@ -1,20 +1,20 @@
 /**
- * SessionStore: kurzlebige Session-Referenzen, ausschließlich im Speicher.
+ * SessionStore: short-lived session references, in memory only.
  *
- * Bewusste Einschränkungen:
- * - keine Persistenz auf Platte (nichts überlebt einen App-Neustart),
- * - TTL für jeden Eintrag, danach wird er verworfen,
- * - keine Passwörter, nur bereits bestehendes Session-Material,
- * - toJSON/inspect geben niemals Werte preis.
+ * Deliberate restrictions:
+ * - no persistence to disk (nothing survives an app restart),
+ * - TTL for every entry, after which it is discarded,
+ * - no passwords, only already existing session material,
+ * - toJSON/inspect never reveal values.
  *
- * Ein Resolver bekommt nur die sessionId im ResolveContext und fragt damit
- * hier nach. So liegt das Material an genau einer Stelle statt in jedem
- * Resolver.
+ * A resolver only gets the sessionId in the ResolveContext and asks
+ * here with it. This keeps the material in exactly one place instead of in every
+ * resolver.
  */
 
 const crypto = require("node:crypto");
 
-const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30 Minuten
+const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 class SessionStore {
   /**
@@ -29,7 +29,7 @@ class SessionStore {
   }
 
   /**
-   * Legt eine Session an und liefert ihre Id zurück.
+   * Creates a session and returns its id.
    * @param {{ cookies?: Array, headers?: Object, userAgent?: string, origin?: string }} data
    * @param {{ ttlMs?: number }} [options]
    * @returns {string} sessionId
@@ -47,11 +47,11 @@ class SessionStore {
    */
   set(sessionId, data = {}, options = {}) {
     if (typeof sessionId !== "string" || !sessionId) {
-      throw new TypeError("SessionStore.set: sessionId fehlt.");
+      throw new TypeError("SessionStore.set: sessionId missing.");
     }
     this._evictExpired();
     if (this._entries.size >= this.maxEntries && !this._entries.has(sessionId)) {
-      // Ältesten Eintrag verdrängen (Map hält Einfügereihenfolge).
+      // Evict the oldest entry (Map keeps insertion order).
       const oldest = this._entries.keys().next();
       if (!oldest.done) this._entries.delete(oldest.value);
     }
@@ -62,7 +62,7 @@ class SessionStore {
 
   /**
    * @param {string} sessionId
-   * @returns {Object|null} Session-Daten oder null (unbekannt/abgelaufen).
+   * @returns {Object|null} Session data or null (unknown/expired).
    */
   get(sessionId) {
     const entry = this._entries.get(sessionId);
@@ -84,12 +84,12 @@ class SessionStore {
     return this._entries.delete(sessionId);
   }
 
-  /** Alles verwerfen, z. B. beim Beenden der App. */
+  /** Discard everything, e.g. when the app quits. */
   clear() {
     this._entries.clear();
   }
 
-  /** Anzahl gültiger Sessions (räumt nebenbei abgelaufene weg). */
+  /** Number of valid sessions (also removes expired ones). */
   size() {
     this._evictExpired();
     return this._entries.size;
@@ -102,7 +102,7 @@ class SessionStore {
     }
   }
 
-  /** Niemals Inhalte serialisieren. */
+  /** Never serialize contents. */
   toJSON() {
     return { sessions: this._entries.size, persisted: false };
   }

@@ -1,12 +1,12 @@
 /* ============================================================
    Snatchy - Renderer Process
-   Steuert die React App und kommuniziert mit Electron Backend
+   Controls the React app and communicates with the Electron backend
    ============================================================ */
 
-// Einmalige Migration der localStorage-Schluessel von ytx-* auf snatchy-*.
-// Liest jeden alten Schluessel, speichert den Wert unter dem neuen Namen (ein
-// bereits vorhandener neuer Wert gewinnt) und loescht danach den alten.
-// TODO: Kann entfernt werden, sobald alle Installationen einmal gestartet wurden.
+// One-time migration of the localStorage keys from ytx-* to snatchy-*.
+// Reads every old key, stores the value under the new name (an
+// already existing new value wins) and then deletes the old one.
+// TODO: Can be removed once all installations have been started once.
 (() => {
   try {
     const legacyKeys = [];
@@ -21,7 +21,7 @@
       }
       localStorage.removeItem(oldKey);
     });
-  } catch { /* localStorage nicht verfuegbar: nichts zu migrieren */ }
+  } catch { /* localStorage not available: nothing to migrate */ }
 })();
 
 // Backend API Bridge
@@ -48,18 +48,18 @@ const getSnatchyAPI = () => {
   return window.snatchy;
 };
 
-// Vela Design System Komponenten
+// Vela design system components
 const { Button, IconButton, Badge, Spinner } = window.VelaDesignSystem_f6c677 || {};
 const { Input, Switch, Select } = window.VelaDesignSystem_f6c677 || {};
 
-// Fallback: Wenn Bundle nicht geladen ist
+// Fallback: if the bundle is not loaded
 if (!window.VelaDesignSystem_f6c677) {
   console.warn('Vela Design System Bundle nicht geladen');
 }
 
 const { useState, useEffect, useLayoutEffect, useCallback, useRef } = React;
 
-// Dateinamen aus einem yt-dlp Logeintrag extrahieren (best effort)
+// Extract the file name from a yt-dlp log entry (best effort)
 function parseFilenameFromLog(line) {
   let match = line.match(/Merging formats into "(.+?)"/);
   if (!match) match = line.match(/Destination:\s*(.+)$/);
@@ -70,15 +70,15 @@ function parseFilenameFromLog(line) {
   return parts[parts.length - 1] || full;
 }
 
-// Verlauf-Zeitstempel im Format TT.MM.JJ:HH.MM (fester Wunschformat, nicht Locale-abhängig).
+// History timestamp in the format TT.MM.JJ:HH.MM (fixed desired format, not locale-dependent).
 function formatHistoryTime(ts) {
   const d = new Date(ts);
   const pad = (n) => String(n).padStart(2, '0');
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${pad(d.getFullYear() % 100)}:${pad(d.getHours())}.${pad(d.getMinutes())}`;
 }
 
-// Episoden-Datum im Folgen-Auswahldialog: Roh-RSS-Datum ("Wed, 02 Jul 2026 …")
-// in ein kurzes, lesbares Format bringen; unparsebare Werte unverändert zeigen.
+// Episode date in the episode selection dialog: bring the raw RSS date ("Wed, 02 Jul 2026 ...")
+// into a short, readable format; show unparsable values unchanged.
 function formatPubDate(raw) {
   if (!raw) return '';
   const d = new Date(raw);
@@ -86,30 +86,30 @@ function formatPubDate(raw) {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// Dateiformat-Tag (MP4/MP3/TXT) samt Farbe je Format – dieselben Farben wie bei
-// den Format-Icons (Video=teal, Audio=indigo, Transkript=lila).
+// File format tag (MP4/MP3/TXT) with color per format - the same colors as
+// the format icons (video=teal, audio=indigo, transcript=purple).
 function formatTagInfo(format) {
   if (format === 'transcript') return { label: 'TXT', color: 'var(--vela-tertiary, oklch(0.78 0.15 300))' };
   if (format === 'audio') return { label: 'MP3', color: 'var(--vela-audio)' };
   return { label: 'MP4', color: 'var(--vela-video)' };
 }
 
-// Heuristik: Sieht die URL nach einer Playlist/Sammlung aus? Deckt die gängigen
-// Plattformen ab (nicht nur YouTube), ohne yt-dlp zu befragen:
+// Heuristic: does the URL look like a playlist/collection? Covers the common
+// platforms (not just YouTube) without asking yt-dlp:
 //  - YouTube:    ?list=… / &list=… / &index=… / /playlist
 //  - SoundCloud: /sets/
 //  - Bandcamp/Spotify/Vimeo: /album/ , /showcase/
-//  - generisch:  das Wort "playlist", /series/
-// Für 100% Sicherheit müsste man yt-dlp proben – hier bewusst sofort & offline.
+//  - generic:    the word "playlist", /series/
+// For 100% certainty yt-dlp would have to be probed - deliberately immediate & offline here.
 function looksLikePlaylist(url) {
   if (!url) return false;
   return /(\bplaylist\b)|([?&](list|playlist)=)|([?&]index=\d)|(\/sets\/)|(\/albums?\/)|(\/showcase\/)|(\/series\/)/i.test(url);
 }
 
-// Heuristik: Sieht die URL nach einem Podcast-RSS-Feed aus? Deckt die
-// gängigen Hosting-Anbieter ab (Hostname beginnt oft mit "feeds."/"feed.")
-// sowie typische Pfad-/Endungsmuster – ohne den Feed selbst abzufragen,
-// rein für die Format-Vorauswahl in der UI.
+// Heuristic: does the URL look like a podcast RSS feed? Covers the
+// common hosting providers (hostname often starts with "feeds."/"feed.")
+// as well as typical path/extension patterns - without querying the feed itself,
+// purely for the format preselection in the UI.
 function looksLikePodcastFeed(url) {
   if (!url) return false;
   let u;
@@ -123,10 +123,10 @@ function looksLikePodcastFeed(url) {
   return false;
 }
 
-// Erkennt die Plattform anhand des Hostnamens für das kleine Badge neben der
-// URL-Leiste – rein kosmetisch/informativ, ändert nichts am Download selbst
-// (der läuft für alle über dieselbe yt-dlp-Pipeline). Bei SoundCloud/Bandcamp
-// zusätzlich ein Hinweis, dass Downloads dort oft vom Urheber selbst erlaubt sind.
+// Detects the platform from the hostname for the small badge next to the
+// URL bar - purely cosmetic/informational, changes nothing about the download itself
+// (it runs through the same yt-dlp pipeline for all). For SoundCloud/Bandcamp
+// additionally a hint that downloads there are often allowed by the creator themselves.
 const PLATFORMS = [
   { id: 'youtube', label: 'YouTube', re: /(^|\.)youtube\.com$|^youtu\.be$/i },
   { id: 'twitch', label: 'Twitch', re: /(^|\.)twitch\.tv$/i },
@@ -207,7 +207,7 @@ function IconGear() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
 }
 
-// Vela App Hauptkomponente
+// Vela app main component
 function VelaApp() {
   const [url, setUrl] = useState('');
   const [format, setFormat] = useState('video');
@@ -234,23 +234,23 @@ function VelaApp() {
   const [playwrightFallback, setPlaywrightFallback] = useState(false);
   const [coverArt, setCoverArt] = useState('default');
   const [theme, setTheme] = useState('dark');
-  // Podcast-Folgenauswahl: null = geschlossen, sonst { feedUrl, loading, error, episodes }.
+  // Podcast episode selection: null = closed, otherwise { feedUrl, loading, error, episodes }.
   const [podcastPicker, setPodcastPicker] = useState(null);
-  // Anpassbare Anzahl für die "Erste N" / "Letzte N" Schnellauswahl im Folgen-Dialog.
-  // Als String gehalten (nicht Number), damit das Feld beim Leeren wirklich leer
-  // bleibt statt auf "0" zu springen.
+  // Adjustable number for the "First N" / "Last N" quick selection in the episode dialog.
+  // Kept as a string (not a number) so the field really stays empty
+  // when cleared instead of jumping to "0".
   const [episodeCountInput, setEpisodeCountInput] = useState('5');
-  // Backend-Abhängigkeiten (Default true, damit vor der Prüfung keine Warnung blitzt)
+  // Backend dependencies (default true so no warning flashes before the check)
   const [deps, setDeps] = useState({ ytDlpAvailable: true, ffmpegAvailable: true });
 
   const snatchy = getSnatchyAPI();
 
-  // Id des aktuell laufenden Downloads (für Backend-Events)
+  // Id of the currently running download (for backend events)
   const activeIdRef = useRef(null);
-  // Aktuellen Ordner für Event-Handler verfügbar halten
+  // Keep the current folder available for event handlers
   const folderRef = useRef(folder);
   useEffect(() => { folderRef.current = folder; }, [folder]);
-  // Benachrichtigungs-Einstellung + Download-Liste für Event-Handler spiegeln
+  // Mirror notification setting + download list for event handlers
   const notificationsRef = useRef(notifications);
   useEffect(() => { notificationsRef.current = notifications; }, [notifications]);
   const openAfterRef = useRef(openAfter);
@@ -260,7 +260,7 @@ function VelaApp() {
   const downloadsRef = useRef(downloads);
   useEffect(() => { downloadsRef.current = downloads; }, [downloads]);
 
-  // Initialisierung
+  // Initialization
   useEffect(() => {
     const init = async () => {
       const savedTheme = localStorage.getItem('snatchy-theme') || 'dark';
@@ -307,14 +307,14 @@ function VelaApp() {
     init();
   }, []);
 
-  // Theme anwenden
+  // Apply theme
   useEffect(() => {
     document.body.dataset.theme = theme;
     localStorage.setItem('snatchy-theme', theme);
     snatchy.setTheme(theme);
   }, [theme, snatchy]);
 
-  // Verhalten-Einstellungen persistieren
+  // Persist behavior settings
   useEffect(() => { if (folder) localStorage.setItem('snatchy-output-folder', folder); }, [folder]);
   useEffect(() => { localStorage.setItem('snatchy-auto-start', String(autoStart)); }, [autoStart]);
   useEffect(() => { localStorage.setItem('snatchy-notifications', String(notifications)); }, [notifications]);
@@ -328,10 +328,10 @@ function VelaApp() {
   useEffect(() => { localStorage.setItem('snatchy-transcript-lang', transcriptLang); }, [transcriptLang]);
   useEffect(() => { localStorage.setItem('snatchy-history', JSON.stringify(history)); }, [history]);
 
-  // Format automatisch an die eingefügte URL anpassen, damit keine unsinnige
-  // Kombination (z. B. Podcast-Format bei einem YouTube-Link) stehen bleibt.
-  // Sieht die URL nach einem RSS-Feed aus → auf Podcast wechseln, sonst weg
-  // von Podcast zurück auf Video (die anderen drei Formate bleiben, wie sie waren).
+  // Adapt the format automatically to the pasted URL so that no nonsensical
+  // combination (e.g. podcast format with a YouTube link) remains.
+  // If the URL looks like an RSS feed -> switch to podcast, otherwise away
+  // from podcast back to video (the other three formats stay as they were).
   useEffect(() => {
     if (!url.trim()) return;
     const feedLikely = looksLikePodcastFeed(url);
@@ -343,8 +343,8 @@ function VelaApp() {
     }
   }, [url]);
 
-  // Kurzer "Gespeichert"-Hinweis in den Einstellungen bei jeder Änderung –
-  // übersprungen beim ersten Mount (Laden der gespeicherten Werte ist kein "Speichern").
+  // Short "Saved" hint in the settings on every change -
+  // skipped on first mount (loading the saved values is not a "save").
   const settingsMountedRef = useRef(false);
   const settingsSavedTimeoutRef = useRef(null);
   useEffect(() => {
@@ -355,7 +355,7 @@ function VelaApp() {
     return () => clearTimeout(settingsSavedTimeoutRef.current);
   }, [folder, autoStart, notifications, openAfter, openFileAfter, encoding, cookiesBrowser, playwrightFallback, coverArt, whisperModel, transcriptLang]);
 
-  // Backend Events: Fortschritt, Logs, Abschluss, Fehler
+  // Backend events: progress, logs, completion, error
   useEffect(() => {
     const updateActive = (patch) => {
       setDownloads(prev => prev.map(d =>
@@ -375,10 +375,10 @@ function VelaApp() {
 
     const unsubscribeLog = snatchy.onLog((line) => {
       console.log('[Backend]', line);
-      // Whisper-Phase markieren, damit die Zeile einen unbestimmten Fortschritt zeigt.
+      // Mark the Whisper phase so that the row shows an indeterminate progress.
       if (/^\[Whisper\]/.test(line)) updateActive({ transcribing: true });
-      // Bei Podcast-Episoden bleibt der saubere Episodentitel stehen, statt vom
-      // (oft technischeren) Dateinamen aus dem Enclosure-Link überschrieben zu werden.
+      // For podcast episodes the clean episode title stays, instead of being
+      // overwritten by the (often more technical) file name from the enclosure link.
       const activeItem = downloadsRef.current.find(d => d.id === activeIdRef.current);
       if (activeItem && activeItem.displayNameLocked) return;
       const name = parseFilenameFromLog(line);
@@ -389,14 +389,14 @@ function VelaApp() {
       const id = activeIdRef.current;
       activeIdRef.current = null;
       const item = downloadsRef.current.find(d => d.id === id);
-      // Fertige Datei: Video-/MP3-Pfad oder – bei Transkripten – die .txt-Datei.
+      // Finished file: video/MP3 path or - for transcripts - the .txt file.
       const targetPath = payload && (payload.filePath || payload.transcriptPath);
       if (notificationsRef.current && item && typeof Notification !== 'undefined') {
         try {
           const n = new Notification('Snatchy: Download abgeschlossen', { body: item.filename || item.url, icon: new URL('../assets/icons/icon-512.png', window.location.href).href });
-          // Klick auf die Benachrichtigung öffnet die fertige Datei direkt.
+          // Click on the notification opens the finished file directly.
           n.onclick = () => snatchy.openFile(targetPath || folderRef.current);
-        } catch (e) { /* Notification nicht verfügbar */ }
+        } catch (e) { /* Notification not available */ }
       }
       if (openAfterRef.current) {
         snatchy.openFolder(folderRef.current);
@@ -404,8 +404,8 @@ function VelaApp() {
       if (openFileAfterRef.current && targetPath) {
         snatchy.openFile(targetPath);
       }
-      // Abgeschlossene Downloads wandern sofort in den Verlauf, statt in der
-      // Warteschlange als "done" liegen zu bleiben.
+      // Completed downloads move into the history immediately instead of staying
+      // in the queue as "done".
       setDownloads(prev => prev.filter(d => d.id !== id));
       if (item) {
         const entry = {
@@ -439,7 +439,7 @@ function VelaApp() {
     };
   }, [snatchy]);
 
-  // Einen Eintrag im Backend starten
+  // Start an entry in the backend
   const startItem = useCallback((item) => {
     activeIdRef.current = item.id;
     setDownloads(prev => prev.map(d => d.id === item.id ? { ...d, status: 'downloading', progress: 0 } : d));
@@ -458,8 +458,8 @@ function VelaApp() {
       encoding: item.encoding || 'utf-8',
       cookiesBrowser: item.cookiesBrowser || 'none',
       playwrightFallback: !!item.playwrightFallback,
-      // Gilt für alle Formate: Video (MP4), Audio/Podcast-Folgen (MP3, echtes
-      // Einbetten) und Transkript (TXT, nur Vorschau im Verlauf).
+      // Applies to all formats: video (MP4), audio/podcast episodes (MP3, real
+      // embedding) and transcript (TXT, preview in the history only).
       embedCoverArt: item.coverArt === 'thumbnail'
     };
 
@@ -475,7 +475,7 @@ function VelaApp() {
     });
   }, [snatchy]);
 
-  // Warteschlange sequentiell abarbeiten: ein Download gleichzeitig
+  // Process the queue sequentially: one download at a time
   useEffect(() => {
     if (activeIdRef.current !== null) return;
     if (downloads.some(d => d.status === 'downloading')) return;
@@ -483,14 +483,14 @@ function VelaApp() {
     if (next) startItem(next);
   }, [downloads, startItem]);
 
-  // Podcast-RSS-Feed auflösen und den Folgen-Auswahldialog öffnen. Der eigent-
-  // liche Download startet erst, wenn der Nutzer im Dialog bestätigt – vorher
-  // wird nichts zur Warteschlange hinzugefügt.
+  // Resolve the podcast RSS feed and open the episode selection dialog. The actual
+  // download only starts when the user confirms in the dialog - until then
+  // nothing is added to the queue.
   const openPodcastPicker = useCallback((feedUrl) => {
     setPodcastPicker({ feedUrl, loading: true, error: null, episodes: [] });
     snatchy.resolvePodcast(feedUrl).then(result => {
       setPodcastPicker(prev => {
-        if (!prev || prev.feedUrl !== feedUrl) return prev; // zwischenzeitlich geschlossen/ersetzt
+        if (!prev || prev.feedUrl !== feedUrl) return prev; // closed/replaced in the meantime
         if (!result.ok) return { ...prev, loading: false, error: result.error };
         return {
           ...prev,
@@ -513,9 +513,9 @@ function VelaApp() {
     setPodcastPicker(prev => prev ? { ...prev, episodes: prev.episodes.map(ep => ({ ...ep, selected })) } : prev);
   }, []);
 
-  // Feeds listen Folgen typischerweise neueste zuerst – "Erste N" = Anfang der
-  // Liste (neueste), "Letzte N" = Ende der Liste (älteste). n=0 ist explizit
-  // erlaubt (wählt nichts aus) statt auf mindestens 1 hochgezwungen zu werden.
+  // Feeds usually list episodes newest first - "First N" = start of the
+  // list (newest), "Last N" = end of the list (oldest). n=0 is explicitly
+  // allowed (selects nothing) instead of being forced up to at least 1.
   const selectFirstN = useCallback((n) => {
     setPodcastPicker(prev => {
       if (!prev) return prev;
@@ -533,9 +533,9 @@ function VelaApp() {
     });
   }, []);
 
-  // Bestätigung: nur die ausgewählten Folgen zur Warteschlange hinzufügen
-  // (Audio, URL = direkter Enclosure-Link → läuft über die normale MP3-
-  // Pipeline, yt-dlp lädt direkt verlinkte Audiodateien direkt).
+  // Confirmation: only add the selected episodes to the queue
+  // (audio, URL = direct enclosure link -> runs through the normal MP3
+  // pipeline, yt-dlp downloads directly linked audio files directly).
   const confirmPodcastPicker = useCallback(() => {
     setPodcastPicker(prev => {
       if (!prev) return prev;
@@ -564,9 +564,9 @@ function VelaApp() {
     });
   }, [quality, encoding, cookiesBrowser, playwrightFallback, coverArt, autoStart]);
 
-  // Download(s) zur Warteschlange hinzufügen. Erkennt mehrere Links auf einmal
-  // (einer pro Zeile/durch Leerraum getrennt, z. B. aus der Zwischenablage
-  // eingefügt) und legt für jeden einen eigenen Eintrag an.
+  // Add download(s) to the queue. Detects several links at once
+  // (one per line/separated by whitespace, e.g. pasted from the clipboard)
+  // and creates a separate entry for each.
   const addDownload = useCallback(() => {
     const trimmed = url.trim();
     if (!trimmed) return;
@@ -603,7 +603,7 @@ function VelaApp() {
     setUrl('');
   }, [url, format, quality, transcriptLang, whisperModel, playlistMode, encoding, cookiesBrowser, playwrightFallback, coverArt, autoStart, openPodcastPicker]);
 
-  // Download entfernen (aktiven Download zuvor abbrechen)
+  // Remove download (cancel the active download first)
   const removeDownload = (id) => {
     if (activeIdRef.current === id) {
       snatchy.cancelDownload();
@@ -612,17 +612,17 @@ function VelaApp() {
     setDownloads(prev => prev.filter(d => d.id !== id));
   };
 
-  // Eintrag (erneut) in die Warteschlange stellen
+  // Put an entry (again) into the queue
   const queueDownload = (id) => {
     setDownloads(prev => prev.map(d => d.id === id ? { ...d, status: 'queued', progress: 0, error: undefined } : d));
   };
 
-  // Ordner öffnen
+  // Open folder
   const openFolder = () => {
     snatchy.openFolder(folder);
   };
 
-  // Ordner wählen
+  // Choose folder
   const chooseFolder = async () => {
     const selected = await snatchy.selectFolder();
     if (selected) {
@@ -630,13 +630,13 @@ function VelaApp() {
     }
   };
 
-  // Fehlgeschlagene aus der Warteschlange entfernen (aktive/wartende bleiben)
+  // Remove failed ones from the queue (active/waiting stay)
   const clearErrors = () => {
     setDownloads(prev => prev.filter(d => d.status !== 'error'));
   };
 
-  // Einzelnen Verlaufseintrag entfernen – löscht dabei auch die zugehörige Datei
-  // auf der Festplatte (Transkript-.txt bzw. Video-/Audiodatei), nicht nur den Eintrag.
+  // Remove a single history entry - this also deletes the associated file
+  // on disk (transcript .txt or video/audio file), not just the entry.
   const removeHistoryEntry = (id) => {
     const entry = history.find(h => h.id === id);
     const target = entry && (entry.transcriptPath || entry.filePath);
@@ -647,13 +647,13 @@ function VelaApp() {
     if (expandedHistoryId === id) setExpandedHistoryId(null);
   };
 
-  // Gesamten Verlauf leeren
+  // Clear the whole history
   const clearHistory = () => {
     setHistory([]);
     setExpandedHistoryId(null);
   };
 
-  // Transkript-Text in die Zwischenablage kopieren
+  // Copy transcript text to the clipboard
   const copyTranscript = (id, text) => {
     navigator.clipboard.writeText(text || '').then(() => {
       setCopiedHistoryId(id);
@@ -661,18 +661,18 @@ function VelaApp() {
     });
   };
 
-  // Anzahl aktive Downloads
+  // Number of active downloads
   const activeCount = downloads.filter(d => d.status === 'downloading' || d.status === 'queued').length;
   const completedCount = history.length;
 
-  // Format-Optionen
+  // Format options
   const qualityOptions = format === 'video'
     ? [{ value: 'best', label: 'Beste verfügbare' }, { value: '480p', label: '480p SD' }, { value: '720p', label: '720p HD' }, { value: '1080p', label: '1080p FHD' }, { value: '2160p', label: '4K UHD' }]
     : [{ value: '128k', label: '128 kbps' }, { value: '192k', label: '192 kbps' }, { value: '256k', label: '256 kbps' }, { value: '320k', label: '320 kbps (best)' }];
 
-  // Sprach-Optionen für das Transkript (Untertitel-Auswahl bzw. Whisper-Sprache).
-  // Standard ist "Automatisch": die Sprache wird per KI erkannt (Whisper erkennt
-  // sie selbst, sofern keine feste Sprache vorgegeben ist).
+  // Language options for the transcript (subtitle selection or Whisper language).
+  // Default is "Automatic": the language is detected by AI (Whisper detects
+  // it itself unless a fixed language is given).
   const langOptions = [
     { value: 'auto', label: 'Automatisch erkennen (empfohlen)' },
     { value: 'de', label: 'Deutsch' },
@@ -684,11 +684,11 @@ function VelaApp() {
     { value: 'all', label: 'Alle (Untertitel)' }
   ];
 
-  // Download Row Komponente
+  // Download row component
   function DownloadItem({ download }) {
     const pct = Math.min(100, Math.max(0, download.progress));
     const isTranscript = download.format === 'transcript';
-    // Whisper liefert keinen Prozentwert → unbestimmter (laufender) Balken.
+    // Whisper provides no percentage value -> indeterminate (running) bar.
     const indeterminate = download.status === 'queued' || download.status === 'paused' || (isTranscript && download.transcribing);
     const downloadingLabel = isTranscript
       ? (download.transcribing ? 'Transkribiere (Whisper)…' : 'Transkript wird erstellt…')
@@ -732,8 +732,8 @@ function VelaApp() {
     );
   }
 
-  // Verlauf-Eintrag: abgeschlossener Download, bei Transkript mit ausklappbarem
-  // Textfeld zum direkten Kopieren (Datei bleibt zusätzlich gespeichert).
+  // History entry: completed download, for transcripts with a collapsible
+  // text field for direct copying (file is additionally kept saved).
   function HistoryItem({ entry }) {
     const isTranscript = entry.format === 'transcript';
     const icoClass = isTranscript ? 'vdli-transcript' : entry.format === 'audio' ? 'vdli-audio' : 'vdli-video';
@@ -784,12 +784,12 @@ function VelaApp() {
     );
   }
 
-  // Eingabekarte
+  // Input card
   const InputCard = () => {
     const platform = detectPlatform(url);
-    // Formate ausgrauen, die zur eingefügten URL nicht passen können: bei einem
-    // erkannten RSS-Feed sind Video/Audio/Transkript unmöglich, bei jeder
-    // anderen URL ist Podcast unmöglich. Leeres Feld → keine Einschränkung.
+    // Gray out formats that cannot match the pasted URL: for a
+    // detected RSS feed video/audio/transcript are impossible, for every
+    // other URL podcast is impossible. Empty field -> no restriction.
     const disabledFormats = !url.trim() ? [] : looksLikePodcastFeed(url) ? ['video', 'audio', 'transcript'] : ['podcast'];
     return (
     <div className="input-card">
@@ -820,7 +820,7 @@ function VelaApp() {
     );
   };
 
-  // Download Tab
+  // Download tab
   const DownloadsTab = () => (
     <>
       <div className="dl-top-spacer" />
@@ -863,7 +863,7 @@ function VelaApp() {
     </>
   );
 
-  // Eine Karte für ein einzelnes Setting.
+  // One card for a single setting.
   function SettingsCard({ label, hint, children }) {
     return (
       <div className="settings-card">
@@ -874,10 +874,10 @@ function VelaApp() {
     );
   }
 
-  // Einstellungen: "Standard" immer sichtbar, "Advanced" (Backend-nahe Optionen
-  // wie Whisper-Modell) ausklappbar. Jeweils 2 unabhängige Spalten (keine
-  // Grid-Zeilen), damit unterschiedlich hohe Karten (mit/ohne Hinweistext)
-  // keine Lücken zur Nachbarspalte reißen.
+  // Settings: "Standard" always visible, "Advanced" (backend-related options
+  // such as Whisper model) collapsible. Two independent columns each (no
+  // grid rows), so that cards of different heights (with/without hint text)
+  // do not leave gaps next to the neighboring column.
   const SettingsTab = () => (
     <div className="settings">
       <div className="settings-group">
@@ -982,15 +982,15 @@ function VelaApp() {
     </div>
   );
 
-  // Podcast-Folgen-Auswahldialog: erscheint nach dem Auflösen des RSS-Feeds,
-  // bevor irgendetwas zur Warteschlange hinzugefügt wird. Erlaubt Einzelauswahl,
-  // Alle/Keine sowie eine anpassbare "Erste N"/"Letzte N"-Schnellauswahl.
+  // Podcast episode selection dialog: appears after resolving the RSS feed,
+  // before anything is added to the queue. Allows single selection,
+  // All/None and a customizable "First N"/"Last N" quick selection.
   const PodcastPickerModal = () => {
     if (!podcastPicker) return null;
     const { loading, error, episodes } = podcastPicker;
     const selectedCount = episodes.filter(ep => ep.selected).length;
-    // Nur für Anzeige/Logik der Erste/Letzte-Buttons – das Eingabefeld selbst
-    // bleibt leer, solange der Nutzer nichts eingegeben hat (kein erzwungenes "0").
+    // Only for display/logic of the First/Last buttons - the input field itself
+    // stays empty as long as the user has not entered anything (no forced "0").
     const episodeCount = Number(episodeCountInput) || 0;
 
     return (
@@ -1028,7 +1028,7 @@ function VelaApp() {
                       value={episodeCountInput}
                       onChange={e => {
                         const raw = e.target.value;
-                        // Nur Ziffern zulassen; leer bleibt leer (kein erzwungenes "0").
+                        // Allow digits only; empty stays empty (no forced "0").
                         if (raw === '' || /^\d+$/.test(raw)) {
                           setEpisodeCountInput(raw);
                         }
@@ -1068,12 +1068,12 @@ function VelaApp() {
     );
   };
 
-  // Format Toggle (Video / Audio / Transkript) mit gleitender Markierung, die
-  // beim Wechsel über die Zwischen-Segmente slidet (immer teal, kein Farbwechsel je Format).
-  // Position/Breite werden aus den echten Button-Rects gemessen (offsetLeft/-Width),
-  // statt aus einer Gleich-Drittel-Annahme errechnet – Labels sind unterschiedlich lang
-  // (z. B. "Transkript" vs. "Audio"), ein Grid mit 1fr-Spalten gleicht das im
-  // Shrink-to-fit-Container nicht zuverlässig aus und lässt die Markierung driften.
+  // Format toggle (video / audio / transcript) with a sliding marker that
+  // slides over the intermediate segments on change (always teal, no color change per format).
+  // Position/width are measured from the real button rects (offsetLeft/-Width),
+  // instead of being computed from an equal-thirds assumption - labels have different lengths
+  // (e.g. "Transkript" vs. "Audio"), a grid with 1fr columns does not reliably balance that in the
+  // shrink-to-fit container and makes the marker drift.
   function FormatToggle({ value, onChange, disabled }) {
     const isSelected = (mode) => value === mode;
     const isDisabled = (mode) => !!disabled && disabled.includes(mode);
@@ -1086,9 +1086,9 @@ function VelaApp() {
       setIndicator({ left: btn.offsetLeft, width: btn.offsetWidth });
     }, [value]);
 
-    // Ausgegraute Formate passen nicht zur eingefügten URL (z. B. Podcast bei
-    // einem YouTube-Link, oder Video/Audio/Transkript bei einem RSS-Feed) –
-    // Klick ist deaktiviert statt einfach nur optisch gedimmt zu sein.
+    // Grayed-out formats do not match the pasted URL (e.g. podcast with
+    // a YouTube link, or video/audio/transcript with an RSS feed) -
+    // click is disabled instead of just being visually dimmed.
     const disabledTitle = 'Passt nicht zur eingefügten URL';
 
     return (
@@ -1114,7 +1114,7 @@ function VelaApp() {
     );
   }
 
-  // Playlist Mode
+  // Playlist mode
   function PlaylistMode({ mode, onChange }) {
     const opts = [
       { v: 'single', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8z"/><rect width="14" height="12" x="2" y="6" rx="2"/></svg>, name: 'Nur dieses Video', desc: 'Playlist ignorieren' },
@@ -1149,11 +1149,11 @@ function VelaApp() {
         onPaste && onPaste('');
       }
     };
-    // Klick irgendwo im Feld (außer Paste-Button) soll ins Textfeld fokussieren,
-    // nicht nur ein Klick direkt auf den schmalen <input>-Bereich.
+    // A click anywhere in the field (except the paste button) should focus the text field,
+    // not just a click directly on the narrow <input> area.
     const focusInput = (e) => {
       if (e.target.closest('.vurl-paste')) return;
-      if (e.target.classList.contains('vurl-inp')) return; // native Klick-Positionierung nicht stören
+      if (e.target.classList.contains('vurl-inp')) return; // do not disturb native click positioning
       e.preventDefault();
       const input = e.currentTarget.querySelector('.vurl-inp');
       if (input) input.focus();
@@ -1167,7 +1167,7 @@ function VelaApp() {
     );
   }
 
-  // Titlebar
+  // Title bar
   const TitleBar = () => (
     <div className="titlebar">
       <div className="tb-brand">
@@ -1183,7 +1183,7 @@ function VelaApp() {
     </div>
   );
 
-  // Statusleiste
+  // Status bar
   const StatusBar = () => (
     <div className="sbar">
       {activeCount > 0
@@ -1193,7 +1193,7 @@ function VelaApp() {
     </div>
   );
 
-  // Haupt-Render
+  // Main render
   return (
     <div className="app">
       {TitleBar()}
@@ -1217,10 +1217,10 @@ function VelaApp() {
   );
 }
 
-// React Root
+// React root
 ReactDOM.createRoot(document.getElementById('root')).render(<VelaApp />);
 
-// Electron API für Fenstersteuerung
+// Electron API for window control
 if (typeof window.electron === 'undefined') {
   window.electron = {
     minimize: () => window.ipcRenderer && window.ipcRenderer.send('window:minimize'),

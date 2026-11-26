@@ -1,14 +1,14 @@
 /**
- * ProviderResolver für direkt verlinkte Mediendateien und Manifeste.
+ * ProviderResolver for directly linked media files and manifests.
  *
- * Zuständig für alles, was schon eine Medien-URL ist: Podcast-Enclosures
- * (mp3/m4a), direkte mp4-Links, HLS-Playlists (m3u8) und DASH-Manifeste (mpd).
- * Hier ist nichts zu extrahieren, die URL wird nur normalisiert und mit einem
- * Format versehen.
+ * Responsible for everything that already is a media URL: podcast enclosures
+ * (mp3/m4a), direct mp4 links, HLS playlists (m3u8) and DASH manifests (mpd).
+ * There is nothing to extract here, the URL is only normalized and given a
+ * format.
  *
- * Hinweis: verschlüsselte (DRM-geschützte) Streams werden nicht behandelt.
- * Es wird nichts entschlüsselt und kein Zugriffsschutz umgangen; solche
- * Quellen scheitern bewusst weiter unten im Downloader.
+ * Note: encrypted (DRM-protected) streams are not handled.
+ * Nothing is decrypted and no access protection is circumvented; such
+ * sources deliberately fail further down in the downloader.
  */
 
 const { ProviderResolver } = require("./ProviderResolver");
@@ -19,7 +19,7 @@ const VIDEO_EXT = ["mp4", "m4v", "webm", "mov", "mkv", "ts"];
 const MANIFEST_EXT = ["m3u8", "mpd"];
 const ALL_EXT = [...AUDIO_EXT, ...VIDEO_EXT, ...MANIFEST_EXT];
 
-/** Endung aus dem Pfad (ohne Query), klein geschrieben, oder "". */
+/** Extension from the path (without query), lowercase, or "". */
 const extensionOf = (url) => {
   const parsed = parseUrl(url);
   if (!parsed) return "";
@@ -29,8 +29,8 @@ const extensionOf = (url) => {
 
 class DirectMediaProviderResolver extends ProviderResolver {
   constructor() {
-    // Hohe Priorität: wenn die URL bereits eine Mediendatei ist, muss kein
-    // anderer Resolver mehr raten.
+    // High priority: if the URL already is a media file, no
+    // other resolver needs to guess any more.
     super({ name: "direct-media", priority: 80 });
   }
 

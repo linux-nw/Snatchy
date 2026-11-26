@@ -1,24 +1,24 @@
 /**
- * SiteResolver für Podcast-RSS-Feeds.
+ * SiteResolver for podcast RSS feeds.
  *
- * Übernimmt die bisherige Feed-Logik aus main.js unverändert in der Sache:
- * Regex-basiert statt mit XML-Parser, um keine zusätzliche Abhängigkeit zu
- * brauchen - Podcast-RSS ist strukturell einfach genug (ein <item> pro
- * Episode, ein <enclosure url="...">).
+ * Takes over the previous feed logic from main.js unchanged in substance:
+ * regex-based instead of an XML parser, to avoid needing an additional
+ * dependency. Podcast RSS is structurally simple enough (one <item> per
+ * episode, one <enclosure url="...">).
  *
- * Neu ist nur die Form des Ergebnisses: jede Episode wird zu einer
- * Media-Referenz mit providerUrl = enclosure-URL. Den Rest macht der
- * DirectMediaProviderResolver, der Download läuft danach wie bisher über
- * dieselbe MP3-Pipeline.
+ * Only the shape of the result is new: every episode becomes a
+ * media reference with providerUrl = enclosure URL. The rest is done by the
+ * DirectMediaProviderResolver; the download then runs as before through
+ * the same MP3 pipeline.
  */
 
 const { SiteResolver } = require("./SiteResolver");
 const { ResolveError, ResolveErrorCode } = require("../core/errors");
 const { hostOf, isHttpUrl } = require("../core/types");
 
-// Begrenzung gegen versehentliches Queuen riesiger Feeds (manche haben 1000+
-// Folgen). Bewusst hoch, damit die Folgenauswahl im UI auch bei langem Archiv
-// die komplette Liste zeigen kann.
+// Limit against accidentally queuing huge feeds (some have 1000+
+// episodes). Deliberately high so that the episode selection in the UI can show
+// the complete list even for a long archive.
 const MAX_PODCAST_EPISODES = 300;
 
 const decodeXmlEntities = (s) => String(s || "")
@@ -32,13 +32,13 @@ const extractTag = (block, tag) => {
   return m ? decodeXmlEntities(m[1]) : null;
 };
 
-/** Bild einer Episode: <itunes:image href="..."> oder Kanalbild als Fallback. */
+/** Image of an episode: <itunes:image href="..."> or channel image as fallback. */
 const extractImage = (block) => {
   const m = block.match(/<itunes:image[^>]*\shref=["']([^"']+)["']/i);
   return m ? decodeXmlEntities(m[1]) : null;
 };
 
-/** <itunes:duration> in Sekunden, akzeptiert "83", "1:23" und "01:02:03". */
+/** <itunes:duration> in seconds, accepts "83", "1:23" and "01:02:03". */
 const parseDuration = (value) => {
   if (!value) return undefined;
   const parts = String(value).trim().split(":").map((p) => Number.parseFloat(p));
@@ -47,8 +47,8 @@ const parseDuration = (value) => {
 };
 
 /**
- * Heuristik der UI: sieht die URL nach einem Feed aus? Deckt gängige
- * Hosting-Anbieter und die üblichen Pfadmuster ab.
+ * UI heuristic: does the URL look like a feed? Covers common
+ * hosting providers and the usual path patterns.
  * @param {string} url
  */
 const looksLikePodcastFeed = (url) => {
@@ -72,8 +72,8 @@ class PodcastFeedSiteResolver extends SiteResolver {
    * @param {{ maxEpisodes?: number }} [options]
    */
   constructor(options = {}) {
-    // Hohe Priorität: ein Feed ist eindeutig erkennbar und soll vor dem
-    // generischen Resolver drankommen.
+    // High priority: a feed is clearly recognizable and should come before the
+    // generic resolver.
     super({ name: "podcast-rss", priority: 90 });
     this.maxEpisodes = Number.isFinite(options.maxEpisodes) ? options.maxEpisodes : MAX_PODCAST_EPISODES;
   }
@@ -85,7 +85,7 @@ class PodcastFeedSiteResolver extends SiteResolver {
   /**
    * @param {string} url
    * @param {Object} context ResolveContext (nutzt context.fetch)
-   * @returns {Promise<Array>} eine Referenz pro Episode
+   * @returns {Promise<Array>} one reference per episode
    */
   async resolve(url, context = {}) {
     const fetchImpl = typeof context.fetch === "function"

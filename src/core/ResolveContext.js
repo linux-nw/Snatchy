@@ -1,17 +1,17 @@
 /**
- * ResolveContext: alles, was ein Resolver von außen braucht, an einer Stelle.
+ * ResolveContext: everything a resolver needs from the outside, in one place.
  *
- * Enthält absichtlich keine Geschäftslogik. Auth ist ein eigenes Feld und
- * wird nicht in den Resolver "eingebacken", HTTP-Zugriff und der Playwright-
- * Stream-Finder kommen als injizierte Services herein (macht sie testbar und
- * hält Electron-Abhängigkeiten aus den Resolvern heraus).
+ * Deliberately contains no business logic. Auth is its own field and
+ * is not "baked into" the resolver. HTTP access and the Playwright
+ * stream finder come in as injected services (this makes them testable and
+ * keeps Electron dependencies out of the resolvers).
  */
 
 const { NO_AUTH, describeAuth, createAuthContext } = require("../auth/AuthContext");
 const { nullLogger } = require("./logger");
 const { ResolveError, ResolveErrorCode } = require("./errors");
 
-/** Header-Namen einheitlich klein schreiben, Werte als String. */
+/** Normalize header names to lowercase, values to strings. */
 const normalizeHeaders = (headers) => {
   if (!headers || typeof headers !== "object") return {};
   const out = {};
@@ -25,12 +25,12 @@ const normalizeHeaders = (headers) => {
 
 /**
  * @param {Object} [input]
- * @param {Object} [input.auth]        AuthContext (Default: {type:"none"})
- * @param {Object} [input.headers]     Zusätzliche HTTP-Header
- * @param {Array}  [input.cookies]     Cookies für unauthentifizierte Zusatzinfos
+ * @param {Object} [input.auth]        AuthContext (default: {type:"none"})
+ * @param {Object} [input.headers]     Additional HTTP headers
+ * @param {Array}  [input.cookies]     Cookies for unauthenticated extra info
  * @param {string} [input.userAgent]
  * @param {AbortSignal} [input.signal]
- * @param {Object} [input.flags]       Feature-Schalter (playwrightFallback ...)
+ * @param {Object} [input.flags]       Feature switches (playwrightFallback ...)
  * @param {Object} [input.services]    { http, findStream, sessionStore, ... }
  * @param {Object} [input.logger]
  * @param {Object} [input.cache]
@@ -54,10 +54,10 @@ const createResolveContext = (input = {}) => {
     cache: input.cache || null
   };
 
-  /** true, wenn der Vorgang abgebrochen wurde. */
+  /** true if the operation was cancelled. */
   context.isAborted = () => !!(context.signal && context.signal.aborted);
 
-  /** Wirft einen CANCELLED-Fehler, sobald abgebrochen wurde. */
+  /** Throws a CANCELLED error as soon as the operation was cancelled. */
   context.throwIfAborted = () => {
     if (context.isAborted()) {
       throw new ResolveError(ResolveErrorCode.CANCELLED, "Vorgang abgebrochen.");
@@ -65,8 +65,8 @@ const createResolveContext = (input = {}) => {
   };
 
   /**
-   * HTTP-Zugriff für Resolver. Nutzt den injizierten Client (Tests) oder das
-   * globale fetch. Header und User-Agent aus dem Context werden ergänzt.
+   * HTTP access for resolvers. Uses the injected client (tests) or the
+   * global fetch. Headers and user agent from the context are added.
    * @param {string} url
    * @param {RequestInit} [options]
    */
@@ -82,7 +82,7 @@ const createResolveContext = (input = {}) => {
     });
   };
 
-  /** Kopie mit geänderten Feldern (z. B. anderer Logger je Resolver). */
+  /** Copy with changed fields (e.g. a different logger per resolver). */
   context.with = (overrides = {}) => createResolveContext({
     auth: overrides.auth || context.auth,
     headers: overrides.headers || context.headers,
@@ -99,8 +99,8 @@ const createResolveContext = (input = {}) => {
 };
 
 /**
- * Log-sichere Zusammenfassung eines Context: keine Cookie-Werte, keine
- * Header-Werte, nur Namen und Anzahlen.
+ * Log-safe summary of a context: no cookie values, no
+ * header values, only names and counts.
  * @param {Object} context
  */
 const describeContext = (context) => {

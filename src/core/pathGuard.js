@@ -1,17 +1,17 @@
 "use strict";
 /**
- * Pfadpruefung fuer die IPC-Handler file:open, file:delete und folder:open.
+ * Path validation for the IPC handlers file:open, file:delete and folder:open.
  *
- * Erlaubt sind nur Pfade unterhalb des Standard-Download-Ordners und unterhalb
- * von Ordnern, die der Nutzer im System-Dialog selbst gewaehlt hat (diese
- * Liste liegt im userData-Ordner). Symlinks und Junctions werden aufgeloest,
- * damit sich niemand aus dem erlaubten Bereich hinausschmuggeln kann.
+ * Only paths below the default download folder and below folders that
+ * the user chose themselves in the system dialog are allowed (this
+ * list is stored in the userData folder). Symlinks and junctions are resolved
+ * so nobody can sneak out of the allowed area.
  */
 const fs = require("node:fs");
 const path = require("node:path");
 
-// Nur Medien-, Text- und Bildformate duerfen geoeffnet oder geloescht werden.
-// Alles andere (.exe, .bat, .cmd, .ps1, .msi, .lnk, .js ...) wird abgelehnt.
+// Only media, text and image formats may be opened or deleted.
+// Everything else (.exe, .bat, .cmd, .ps1, .msi, .lnk, .js ...) is rejected.
 const SAFE_FILE_EXTENSIONS = new Set([
   ".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi",
   ".mp3", ".m4a", ".aac", ".opus", ".ogg", ".oga", ".wav", ".flac",
@@ -25,8 +25,8 @@ const isInside = (child, root) => {
   return rel !== ".." && !rel.startsWith(".." + path.sep);
 };
 
-// Echter Pfad (Symlinks aufgeloest). Existiert das Ziel noch nicht, wird der
-// laengste vorhandene Vorfahre aufgeloest und der Rest angehaengt.
+// Real path (symlinks resolved). If the target does not exist yet, the
+// longest existing ancestor is resolved and the rest appended.
 const realpathLoose = (target) => {
   let current = path.resolve(target);
   const rest = [];
@@ -61,7 +61,7 @@ const createFolderPolicy = ({ defaultFolder, storeFile }) => {
         if (validString(entry) && path.isAbsolute(entry) && !isUncOrDevicePath(entry)) roots.add(path.resolve(entry));
       }
     }
-  } catch { /* noch keine Liste vorhanden */ }
+  } catch { /* no list yet */ }
 
   const save = () => {
     try {
@@ -73,7 +73,7 @@ const createFolderPolicy = ({ defaultFolder, storeFile }) => {
   const allowedRoots = () => [defaultFolder, ...roots].map(realpathLoose);
   const underRoot = (real) => allowedRoots().some((root) => isInside(real, root));
 
-  /** Nur fuer vertrauenswuerdigen Code (Auswahl im System-Dialog) aufrufen. */
+  /** Only call for trusted code (selection in the system dialog). */
   const allow = (folder) => {
     if (!validString(folder) || !path.isAbsolute(folder) || isUncOrDevicePath(folder)) {
       return { ok: false, error: "Ungueltiger Ordner." };
@@ -99,7 +99,7 @@ const createFolderPolicy = ({ defaultFolder, storeFile }) => {
       return { ok: false, error: "Ordner liegt ausserhalb der freigegebenen Download-Ordner." };
     }
     let stat = null;
-    try { stat = fs.statSync(real); } catch { /* existiert noch nicht */ }
+    try { stat = fs.statSync(real); } catch { /* does not exist yet */ }
     if (stat && !stat.isDirectory()) return { ok: false, error: "Das ist kein Ordner." };
     if (!stat && mustExist) return { ok: false, error: "Ordner existiert nicht." };
     return { ok: true, path: real };
@@ -115,7 +115,7 @@ const createFolderPolicy = ({ defaultFolder, storeFile }) => {
     let lstat;
     try { lstat = fs.lstatSync(file); } catch (err) {
       if (err.code !== "ENOENT") return { ok: false, error: err.message };
-      // Fehlende Datei: nur innerhalb der freigegebenen Ordner als "bereits weg" melden.
+      // Missing file: only report as "already gone" inside the allowed folders.
       return underRoot(realpathLoose(file))
         ? { ok: false, missing: true, error: "Datei nicht gefunden." }
         : { ok: false, error: "Datei liegt ausserhalb der freigegebenen Download-Ordner." };

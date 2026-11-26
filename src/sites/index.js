@@ -1,9 +1,9 @@
 /**
- * Registry aller mitgelieferten SiteResolver.
+ * Registry of all bundled SiteResolvers.
  *
- * Neue Seite unterstützen: Datei in diesem Ordner anlegen, Klasse von
- * SiteResolver ableiten und hier in createSiteRegistry() eintragen.
- * Die Reihenfolge im Array ist egal, entschieden wird über priority.
+ * To support a new site: create a file in this folder, derive a class from
+ * SiteResolver and add it here in createSiteRegistry().
+ * The order in the array does not matter, priority decides.
  */
 
 const { ResolverRegistry } = require("../core/registry");
@@ -12,7 +12,7 @@ const { PodcastFeedSiteResolver, looksLikePodcastFeed } = require("./PodcastFeed
 const { GenericPageSiteResolver } = require("./GenericPageSiteResolver");
 
 /**
- * @param {{ extra?: Array }} [options] zusätzliche Resolver (Tests, Plugins)
+ * @param {{ extra?: Array }} [options] additional resolvers (tests, plugins)
  * @returns {ResolverRegistry}
  */
 const createSiteRegistry = (options = {}) => {
@@ -20,7 +20,7 @@ const createSiteRegistry = (options = {}) => {
   registry.registerAll([
     new PodcastFeedSiteResolver(),   // priority 90
     ...(options.extra || []),
-    new GenericPageSiteResolver()    // priority 1, fängt alles auf
+    new GenericPageSiteResolver()    // priority 1, catches everything else
   ]);
   return registry;
 };

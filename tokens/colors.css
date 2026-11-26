@@ -94,6 +94,6 @@
 
   /* ---- Window chrome ------------------------------------- */
   --vela-titlebar: oklch(0.135 0.013 257 / 0.92);
-  /* Flacher, ruhiger Hintergrund ohne farbige Glints */
+  /* Flat, calm background without colored glints */
   --vela-mica: none;
 }

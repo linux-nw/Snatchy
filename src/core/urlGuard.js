@@ -1,25 +1,25 @@
 "use strict";
 /**
- * Prueft Eingaben fuer Downloads. Erlaubt sind genau zwei Formen:
+ * Validates inputs for downloads. Exactly two forms are allowed:
  *
- * 1. http- und https-URLs (normalizeHttpUrl).
- * 2. yt-dlp-Suchen im festen Muster "ytsearch:Suchtext" oder "ytsearchN:Suchtext"
- *    (normalizeYtSearch). N ist optional, 1 bis 50. Der Suchtext darf keine
- *    Zeilenumbrueche und keine Steuerzeichen enthalten, die ganze Eingabe hoechstens
- *    200 Zeichen lang sein. Andere yt-dlp-Praefixe (ytsearchall:, ytsearchdate:,
- *    Gross-/Kleinschreibung abweichend) sind NICHT erlaubt.
+ * 1. http and https URLs (normalizeHttpUrl).
+ * 2. yt-dlp searches in the fixed pattern "ytsearch:text" or "ytsearchN:text"
+ *    (normalizeYtSearch). N is optional, 1 to 50. The search text must not
+ *    contain line breaks or control characters, and the whole input must be at most
+ *    200 characters long. Other yt-dlp prefixes (ytsearchall:, ytsearchdate:,
+ *    different capitalization) are NOT allowed.
  *
- * Lokale Pfade, file:-URLs und alles, was mit "-" beginnt (yt-dlp-Optionen),
- * werden abgelehnt. Fuer beide Formen gilt ausserdem: die Eingabe steht in der
- * yt-dlp-Argumentliste immer hinter "--" (siehe src/downloader/ytDlpArgs.js), wird
- * also nie als Option gelesen.
+ * Local paths, file: URLs and anything starting with "-" (yt-dlp options)
+ * are rejected. For both forms it also holds that the input always comes after
+ * "--" in the yt-dlp argument list (see src/downloader/ytDlpArgs.js), so it is
+ * never read as an option.
  */
 
 const YTSEARCH_MAX_LENGTH = 200;
 const YTSEARCH_MAX_RESULTS = 50;
 const YTSEARCH_PATTERN = /^ytsearch(\d{1,2})?:([^\r\n\u0000-\u001f\u007f]+)$/;
 
-/** http/https-URL: gibt die getrimmte URL zurueck oder null. */
+/** http/https URL: returns the trimmed URL or null. */
 const normalizeHttpUrl = (input) => {
   if (typeof input !== "string") return null;
   const text = input.trim();
@@ -33,7 +33,7 @@ const normalizeHttpUrl = (input) => {
   return parsed.protocol === "http:" || parsed.protocol === "https:" ? text : null;
 };
 
-/** ytsearch[N]:Suchtext: gibt die getrimmte Eingabe zurueck oder null. */
+/** ytsearch[N]:text: returns the trimmed input or null. */
 const normalizeYtSearch = (input) => {
   if (typeof input !== "string") return null;
   const text = input.trim();
@@ -47,7 +47,7 @@ const normalizeYtSearch = (input) => {
   return match[2].trim() ? text : null;
 };
 
-/** Eingabe fuer download:start: http(s)-URL oder strenge ytsearch-Form, sonst null. */
+/** Input for download:start: http(s) URL or strict ytsearch form, otherwise null. */
 const normalizeDownloadInput = (input) => normalizeHttpUrl(input) || normalizeYtSearch(input);
 
 module.exports = { normalizeHttpUrl, normalizeYtSearch, normalizeDownloadInput, YTSEARCH_MAX_LENGTH, YTSEARCH_MAX_RESULTS };

@@ -33,7 +33,7 @@ const FEED_XML = `<?xml version="1.0"?>
 const feedContext = (impl) => createResolveContext({ services: { http: impl } });
 const okResponse = (body) => async () => ({ ok: true, status: 200, text: async () => body });
 
-test("SiteResolver-Erkennung: Feeds werden erkannt, Videoseiten nicht", () => {
+test("SiteResolver detection: feeds are detected, video pages are not", () => {
   const resolver = new PodcastFeedSiteResolver();
   for (const url of [
     "https://feeds.example.com/show",
@@ -55,11 +55,11 @@ test("SiteResolver-Erkennung: Feeds werden erkannt, Videoseiten nicht", () => {
   assert.equal(looksLikePodcastFeed("https://feeds.example.com/show"), true);
 });
 
-test("mehrere Provider-Referenzen aus einer Seite", async () => {
+test("several provider references from one page", async () => {
   const resolver = new PodcastFeedSiteResolver();
   const media = await resolver.resolve("https://feeds.example.com/show", feedContext(okResponse(FEED_XML)));
 
-  assert.equal(media.length, 2, "der Eintrag ohne Enclosure wird übersprungen");
+  assert.equal(media.length, 2, "the entry without enclosure is skipped");
   assert.equal(media[0].title, "Folge 2 & mehr");
   assert.equal(media[0].providerUrl, "https://cdn.example.com/folge2.mp3");
   assert.equal(media[0].sourceUrl, "https://feeds.example.com/show");
@@ -67,11 +67,11 @@ test("mehrere Provider-Referenzen aus einer Seite", async () => {
   assert.equal(media[0].thumbnail, "https://cdn.example.com/cover.jpg");
   assert.equal(media[0].meta.pubDate, "Tue, 05 Aug 2025 06:00:00 +0000");
   assert.equal(media[1].duration, 95);
-  // SiteResolver liefern noch keine fertige Medien-URL.
+  // SiteResolvers do not deliver a finished media URL yet.
   assert.equal(media[0].mediaUrl, undefined);
 });
 
-test("Netzwerkfehler wird als NETWORK_ERROR gemeldet", async () => {
+test("network error is reported as NETWORK_ERROR", async () => {
   const resolver = new PodcastFeedSiteResolver();
   const context = feedContext(async () => { throw new Error("getaddrinfo ENOTFOUND feeds.example.com"); });
   await assert.rejects(
@@ -84,7 +84,7 @@ test("Netzwerkfehler wird als NETWORK_ERROR gemeldet", async () => {
   );
 });
 
-test("401 vom Feed bedeutet AUTH_REQUIRED", async () => {
+test("401 from the feed means AUTH_REQUIRED", async () => {
   const resolver = new PodcastFeedSiteResolver();
   const context = feedContext(async () => ({ ok: false, status: 401, text: async () => "" }));
   await assert.rejects(
@@ -93,7 +93,7 @@ test("401 vom Feed bedeutet AUTH_REQUIRED", async () => {
   );
 });
 
-test("kein gültiger Feed wird als EXTRACTION_FAILED gemeldet", async () => {
+test("invalid feed is reported as EXTRACTION_FAILED", async () => {
   const resolver = new PodcastFeedSiteResolver();
   const context = feedContext(okResponse("<html><body>keine Episoden</body></html>"));
   await assert.rejects(
@@ -106,7 +106,7 @@ test("kein gültiger Feed wird als EXTRACTION_FAILED gemeldet", async () => {
   );
 });
 
-test("die Episodenzahl ist begrenzt", async () => {
+test("the episode count is limited", async () => {
   const item = '<item><title>x</title><enclosure url="https://cdn.example.com/x.mp3"/></item>';
   const resolver = new PodcastFeedSiteResolver({ maxEpisodes: 5 });
   const media = await resolver.resolve(
@@ -116,7 +116,7 @@ test("die Episodenzahl ist begrenzt", async () => {
   assert.equal(media.length, 5);
 });
 
-test("der generische SiteResolver reicht die URL unverändert weiter", async () => {
+test("the generic SiteResolver passes the URL on unchanged", async () => {
   const resolver = new GenericPageSiteResolver();
   assert.equal(resolver.canHandle("https://www.youtube.com/watch?v=abc"), true);
   assert.equal(resolver.canHandle("ftp://example.com/x"), false);
@@ -127,7 +127,7 @@ test("der generische SiteResolver reicht die URL unverändert weiter", async () 
   }]);
 });
 
-test("die Standard-Registry testet den Feed-Resolver vor dem generischen", () => {
+test("the default registry tests the feed resolver before the generic one", () => {
   const registry = createSiteRegistry();
   assert.deepEqual(
     registry.match("https://feeds.example.com/show").map((r) => r.name),

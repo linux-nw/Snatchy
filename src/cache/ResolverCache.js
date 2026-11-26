@@ -1,24 +1,24 @@
 /**
- * ResolverCache: kurzlebiger In-Memory-Cache für die Auflösung.
+ * ResolverCache: short-lived in-memory cache for resolution.
  *
- * Cachebar sind: erkannter Site-/Provider-Resolver (praktisch statisch),
- * Metadaten und kurzlebige Auflösungsergebnisse (signierte Medien-URLs laufen
- * schnell ab, deshalb ist die TTL bewusst klein).
+ * Cacheable: detected site/provider resolver (practically static),
+ * metadata and short-lived resolution results (signed media URLs expire
+ * quickly, so the TTL is deliberately small).
  *
- * Nicht cachebar: alles mit Auth-Bezug. set() weist Werte zurück, die
- * Cookies/Tokens/Sessions enthalten, und Ergebnisse aus authentifizierten
- * Kontexten werden vom ResolverManager gar nicht erst angeboten.
+ * Not cacheable: anything auth-related. set() rejects values that contain
+ * cookies/tokens/sessions, and results from authenticated
+ * contexts are not even offered by the ResolverManager.
  */
 
 const SENSITIVE_KEY = /^(cookies?|token|access_?token|refresh_?token|password|passwd|secret|authorization|session_?id|api_?key|credential)s?$/i;
 
 const DEFAULTS = {
-  ttlMs: 5 * 60 * 1000,      // 5 Minuten für Ergebnisse
-  detectionTtlMs: 60 * 60 * 1000, // 1 Stunde für "welcher Resolver passt"
+  ttlMs: 5 * 60 * 1000,      // 5 minutes for results
+  detectionTtlMs: 60 * 60 * 1000, // 1 hour for "which resolver fits"
   maxEntries: 200
 };
 
-/** Wirft, wenn im Wert irgendwo Auth-Material steckt. */
+/** Throws if auth material is hidden anywhere in the value. */
 const assertCacheable = (value, path = "value", depth = 0) => {
   if (depth > 6 || value === null || typeof value !== "object") return;
   if (Array.isArray(value)) {
@@ -27,7 +27,7 @@ const assertCacheable = (value, path = "value", depth = 0) => {
   }
   for (const [key, val] of Object.entries(value)) {
     if (SENSITIVE_KEY.test(key)) {
-      throw new TypeError(`ResolverCache: "${path}.${key}" enthält Auth-Material und wird nicht gecacht.`);
+      throw new TypeError(`ResolverCache: "${path}.${key}" contains auth material and is not cached.`);
     }
     assertCacheable(val, `${path}.${key}`, depth + 1);
   }
@@ -49,9 +49,9 @@ class ResolverCache {
   }
 
   /**
-   * Schlüssel aus Art und URL. Der Fragment-Teil fällt weg, der Rest bleibt
-   * unverändert (der Cache liegt nur im Speicher, nichts wird geschrieben).
-   * @param {string} kind  z. B. "site", "provider", "meta"
+   * Key from kind and URL. The fragment part is dropped, the rest stays
+   * unchanged (the cache only lives in memory, nothing is written).
+   * @param {string} kind  e.g. "site", "provider", "meta"
    * @param {string} url
    */
   static keyFor(kind, url) {
@@ -74,7 +74,7 @@ class ResolverCache {
       return undefined;
     }
     this.hits++;
-    // Kopie herausgeben, damit Aufrufer den Cache-Inhalt nicht verändern.
+    // Return a copy so callers cannot modify the cache content.
     return typeof entry.value === "object" && entry.value !== null
       ? structuredClone(entry.value)
       : entry.value;
@@ -100,7 +100,7 @@ class ResolverCache {
     return value;
   }
 
-  /** Merkt sich, welcher Resolver für eine URL zuständig war (lange TTL). */
+  /** Remembers which resolver was responsible for a URL (long TTL). */
   rememberDetection(kind, url, resolverName) {
     return this.set(ResolverCache.keyFor(`detect-${kind}`, url), resolverName, { ttlMs: this.detectionTtlMs });
   }

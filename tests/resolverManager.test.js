@@ -19,7 +19,7 @@ const managerWith = (sites, providers, options = {}) => new ResolverManager({
   cache: options.cache === undefined ? null : options.cache
 });
 
-test("die Pipeline normalisiert Site- und Provider-Ergebnis zu ResolvedMedia", async () => {
+test("the pipeline normalizes site and provider result to ResolvedMedia", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [{
       sourceUrl: url,
@@ -49,7 +49,7 @@ test("die Pipeline normalisiert Site- und Provider-Ergebnis zu ResolvedMedia", a
   });
 });
 
-test("mehrere Provider auf einer Seite werden alle aufgelöst", async () => {
+test("several providers on one page are all resolved", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [
       { sourceUrl: url, providerUrl: "https://a.example/1", title: "Teil 1" },
@@ -69,7 +69,7 @@ test("mehrere Provider auf einer Seite werden alle aufgelöst", async () => {
   ]);
 });
 
-test("ein einzelner kaputter Kandidat reißt die anderen nicht mit", async () => {
+test("a single broken candidate does not drag the others down", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [
       { sourceUrl: url, providerUrl: "https://kaputt.example/1" },
@@ -86,7 +86,7 @@ test("ein einzelner kaputter Kandidat reißt die anderen nicht mit", async () =>
   assert.equal(media[0].mediaUrl, "https://gut.example/2.mp4");
 });
 
-test("Resolver werden nach Priorität getestet, der erste Treffer gewinnt", async () => {
+test("resolvers are tested by priority, the first hit wins", async () => {
   const versuche = [];
   const manager = managerWith(
     [
@@ -101,7 +101,7 @@ test("Resolver werden nach Priorität getestet, der erste Treffer gewinnt", asyn
   assert.match(media.mediaUrl, /#spezial$/);
 });
 
-test("scheitert ein Resolver, übernimmt der nächste (Fallback)", async () => {
+test("if a resolver fails, the next one takes over (fallback)", async () => {
   const versuche = [];
   const manager = managerWith(
     [
@@ -116,7 +116,7 @@ test("scheitert ein Resolver, übernimmt der nächste (Fallback)", async () => {
   assert.equal(media.provider, "p");
 });
 
-test("AUTH_REQUIRED bleibt bis zum Aufrufer erhalten", async () => {
+test("AUTH_REQUIRED is preserved up to the caller", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [{ sourceUrl: url, providerUrl: url }])],
     [
@@ -139,7 +139,7 @@ test("AUTH_REQUIRED bleibt bis zum Aufrufer erhalten", async () => {
   );
 });
 
-test("SESSION_EXPIRED wird nicht zu einem allgemeinen Fehler verwaschen", async () => {
+test("SESSION_EXPIRED is not watered down to a general error", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [{ sourceUrl: url, providerUrl: url }])],
     [siteStub("hoster", 50, async () => {
@@ -153,7 +153,7 @@ test("SESSION_EXPIRED wird nicht zu einem allgemeinen Fehler verwaschen", async 
   );
 });
 
-test("Netzwerkfehler eines Resolvers behalten ihren Code", async () => {
+test("network errors of a resolver keep their code", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async () => { throw new Error("getaddrinfo ENOTFOUND seite.example"); })],
     [siteStub("hoster", 50, async (url) => ({ sourceUrl: url, mediaUrl: url }))]
@@ -165,7 +165,7 @@ test("Netzwerkfehler eines Resolvers behalten ihren Code", async () => {
   );
 });
 
-test("ungültige URLs werden abgewiesen", async () => {
+test("invalid URLs are rejected", async () => {
   const manager = createDefaultResolverManager({ cache: null });
   for (const url of ["", "   ", "nur-text", "ftp://example.com/x", "javascript:alert(1)"]) {
     await assert.rejects(
@@ -176,7 +176,7 @@ test("ungültige URLs werden abgewiesen", async () => {
   }
 });
 
-test("ohne passenden Resolver gibt es UNSUPPORTED_URL", async () => {
+test("without a matching resolver there is UNSUPPORTED_URL", async () => {
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [{ sourceUrl: url, providerUrl: url }], (url) => url.includes("seite.example"))],
     [siteStub("hoster", 50, async (url) => ({ sourceUrl: url, mediaUrl: url }), () => false)]
@@ -188,7 +188,7 @@ test("ohne passenden Resolver gibt es UNSUPPORTED_URL", async () => {
   );
 });
 
-test("only schränkt auf einen bestimmten Resolver ein", async () => {
+test("only restricts to a specific resolver", async () => {
   const versuche = [];
   const manager = managerWith(
     [
@@ -201,10 +201,10 @@ test("only schränkt auf einen bestimmten Resolver ein", async () => {
   await assert.rejects(
     () => manager.resolveSite("https://seite.example/x", createResolveContext({}), { only: ["podcast"] })
   );
-  assert.deepEqual(versuche, ["podcast"], "kein Ausweichen auf den generischen Resolver");
+  assert.deepEqual(versuche, ["podcast"], "no fallback to the generic resolver");
 });
 
-test("der Ablauf wird Schritt für Schritt geloggt", async () => {
+test("the flow is logged step by step", async () => {
   const logger = createLogger({ sink: () => {} });
   const manager = managerWith(
     [siteStub("site", 50, async (url) => [{ sourceUrl: url, providerUrl: "https://hoster.example/1" }])],
@@ -218,7 +218,7 @@ test("der Ablauf wird Schritt für Schritt geloggt", async () => {
   ]);
 });
 
-test("Ergebnisse werden gecacht, aber nicht bei aktiver Auth", async () => {
+test("results are cached, but not with active auth", async () => {
   let aufrufe = 0;
   const cache = new ResolverCache();
   const manager = managerWith(
@@ -229,15 +229,15 @@ test("Ergebnisse werden gecacht, aber nicht bei aktiver Auth", async () => {
 
   await manager.resolve("https://seite.example/x", createResolveContext({}));
   await manager.resolve("https://seite.example/x", createResolveContext({}));
-  assert.equal(aufrufe, 1, "zweiter Lauf kommt aus dem Cache");
+  assert.equal(aufrufe, 1, "second run comes from the cache");
 
   await manager.resolve("https://seite.example/x", createResolveContext({
     auth: { type: "cookies", cookiesFromBrowser: "chrome" }
   }));
-  assert.equal(aufrufe, 2, "mit Auth wird der Cache umgangen");
+  assert.equal(aufrufe, 2, "with auth the cache is bypassed");
 });
 
-test("die Standard-Pipeline reicht eine Video-URL unverändert an yt-dlp weiter", async () => {
+test("the default pipeline passes a video URL to yt-dlp unchanged", async () => {
   const manager = createDefaultResolverManager({ cache: null });
   const media = await manager.resolveOne(
     "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -247,7 +247,7 @@ test("die Standard-Pipeline reicht eine Video-URL unverändert an yt-dlp weiter"
   assert.equal(media.provider, "yt-dlp");
 });
 
-test("die Standard-Pipeline erkennt eine direkte Mediendatei", async () => {
+test("the default pipeline recognizes a direct media file", async () => {
   const manager = createDefaultResolverManager({ cache: null });
   const media = await manager.resolveOne("https://cdn.example.com/folge1.mp3", createResolveContext({}));
   assert.equal(media.provider, "direct");

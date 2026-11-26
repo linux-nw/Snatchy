@@ -1,21 +1,21 @@
 /**
- * AuthContext: bewusst vom Resolver getrennt.
+ * AuthContext: deliberately separate from the resolver.
  *
- * Ein Resolver bekommt Auth nur als Teil des ResolveContext gereicht und
- * speichert nichts davon. Passwörter gibt es hier absichtlich gar nicht als
- * Feld: die App meldet sich nirgends selbst an, sie verwendet entweder
- * gar keine Auth, bereits vorhandene Cookies oder eine Session-Referenz.
+ * A resolver only receives auth as part of the ResolveContext and
+ * stores nothing of it. Passwords deliberately do not exist here as a
+ * field: the app never logs in by itself, it uses either no auth
+ * at all, already existing cookies or a session reference.
  */
 
 const { ResolveError, ResolveErrorCode } = require("../core/errors");
 
 const AUTH_TYPES = new Set(["none", "cookies", "session"]);
 
-/** Felder, die niemals in einen AuthContext gehören. */
+/** Fields that must never belong in an AuthContext. */
 const FORBIDDEN_FIELDS = ["password", "passwd", "pwd", "secret", "apiKey", "api_key", "token"];
 
 /**
- * Normalisiert einen einzelnen Cookie auf {name, value, domain?, path?, expires?}.
+ * Normalizes a single cookie to {name, value, domain?, path?, expires?}.
  * @param {any} raw
  */
 const normalizeCookie = (raw) => {
@@ -30,7 +30,7 @@ const normalizeCookie = (raw) => {
 };
 
 /**
- * Erstellt einen validierten AuthContext.
+ * Creates a validated AuthContext.
  *
  * @param {{ type?: string, cookies?: Array, sessionId?: string, cookiesFromBrowser?: string }} [input]
  * @returns {{ type: string, cookies?: Array, sessionId?: string, cookiesFromBrowser?: string }}
@@ -39,7 +39,7 @@ const createAuthContext = (input = {}) => {
   for (const field of FORBIDDEN_FIELDS) {
     if (input && Object.prototype.hasOwnProperty.call(input, field)) {
       throw new TypeError(
-        `AuthContext: Feld "${field}" ist nicht erlaubt. Zugangsdaten werden nicht im Resolver gehalten.`
+        `AuthContext: field "${field}" is not allowed. Credentials are not kept in the resolver.`
       );
     }
   }
@@ -52,8 +52,8 @@ const createAuthContext = (input = {}) => {
       ? input.cookies.map(normalizeCookie).filter(Boolean)
       : [];
     if (cookies.length) auth.cookies = cookies;
-    // Referenz auf einen Browser, aus dem yt-dlp die Cookies selbst liest.
-    // Das ist nur ein Name ("chrome", "firefox" ...), kein Geheimnis.
+    // Reference to a browser from which yt-dlp reads the cookies itself.
+    // This is only a name ("chrome", "firefox" ...), not a secret.
     if (typeof input.cookiesFromBrowser === "string" && input.cookiesFromBrowser
       && input.cookiesFromBrowser !== "none") {
       auth.cookiesFromBrowser = input.cookiesFromBrowser;
@@ -70,17 +70,17 @@ const createAuthContext = (input = {}) => {
   return auth;
 };
 
-/** Der Standard: kein Login, keine Cookies. */
+/** The default: no login, no cookies. */
 const NO_AUTH = Object.freeze({ type: "none" });
 
 /**
  * @param {{type: string}} [auth]
- * @returns {boolean} true, wenn überhaupt Auth-Material vorhanden ist.
+ * @returns {boolean} true if any auth material is present at all.
  */
 const hasAuth = (auth) => !!auth && auth.type !== "none";
 
 /**
- * Log-sichere Darstellung: nur Art und Menge, nie Werte.
+ * Log-safe representation: only kind and count, never values.
  * @param {Object} [auth]
  */
 const describeAuth = (auth) => {
@@ -93,7 +93,7 @@ const describeAuth = (auth) => {
 };
 
 /**
- * Fehler, mit dem ein Resolver signalisiert: "geht, aber nur mit Login".
+ * Error with which a resolver signals: "works, but only with login".
  * @param {string} [message]
  * @param {{ resolver?: string, url?: string, needs?: string }} [options]
  */
@@ -104,7 +104,7 @@ const requireAuth = (message, options = {}) => new ResolveError(
 );
 
 /**
- * Fehler, mit dem ein Resolver signalisiert: "die Session ist abgelaufen".
+ * Error with which a resolver signals: "the session has expired".
  * @param {string} [message]
  * @param {{ resolver?: string, url?: string }} [options]
  */

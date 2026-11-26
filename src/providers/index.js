@@ -1,13 +1,13 @@
 /**
- * Registry aller mitgelieferten ProviderResolver.
+ * Registry of all bundled ProviderResolvers.
  *
- * Neuen Hoster unterstützen: Datei in diesem Ordner anlegen, Klasse von
- * ProviderResolver ableiten und hier in createProviderRegistry() eintragen.
+ * To support a new host: create a file in this folder, derive a class from
+ * ProviderResolver and add it here in createProviderRegistry().
  *
- * Prioritäten der Standardresolver:
- *   80 direct-media       URL ist bereits eine Mediendatei
- *   10 yt-dlp             Auffang für alles, was yt-dlp kann
- *    5 playwright-sniffer nur wenn im UI aktiviert, letzte Stufe
+ * Priorities of the default resolvers:
+ *   80 direct-media       URL already is a media file
+ *   10 yt-dlp             catch-all for everything yt-dlp can do
+ *    5 playwright-sniffer only if enabled in the UI, last stage
  */
 
 const { ResolverRegistry } = require("../core/registry");

@@ -1,27 +1,27 @@
 /**
- * Registry für Site- und ProviderResolver.
+ * Registry for site and provider resolvers.
  *
- * Ersetzt if/else-Ketten: ein Resolver meldet sich mit canHandle(url) und
- * einer Priorität an, die Registry liefert die passenden Kandidaten in
- * absteigender Priorität. Eine kaputte canHandle-Implementierung darf die
- * Auswahl nicht sprengen, deshalb wird sie isoliert aufgerufen.
+ * Replaces if/else chains: a resolver registers with canHandle(url) and
+ * a priority, and the registry returns the matching candidates in
+ * descending priority. A broken canHandle implementation must not
+ * break the selection, so it is called in isolation.
  */
 
 const DEFAULT_PRIORITY = 50;
 
-/** Pflichtform eines Resolvers prüfen, bevor er registriert wird. */
+/** Check the required shape of a resolver before it is registered. */
 const assertResolverShape = (resolver, kind) => {
   if (!resolver || typeof resolver !== "object") {
-    throw new TypeError(`${kind}: Resolver-Objekt erwartet.`);
+    throw new TypeError(`${kind}: resolver object expected.`);
   }
   if (typeof resolver.name !== "string" || !resolver.name.trim()) {
-    throw new TypeError(`${kind}: Resolver braucht einen name.`);
+    throw new TypeError(`${kind}: resolver needs a name.`);
   }
   if (typeof resolver.canHandle !== "function") {
-    throw new TypeError(`${kind} "${resolver.name}": canHandle(url) fehlt.`);
+    throw new TypeError(`${kind} "${resolver.name}": canHandle(url) missing.`);
   }
   if (typeof resolver.resolve !== "function") {
-    throw new TypeError(`${kind} "${resolver.name}": resolve(url, context) fehlt.`);
+    throw new TypeError(`${kind} "${resolver.name}": resolve(url, context) missing.`);
   }
 };
 
@@ -44,7 +44,7 @@ class ResolverRegistry {
   register(resolver, options = {}) {
     assertResolverShape(resolver, this.kind);
     if (this._items.some((item) => item.resolver.name === resolver.name)) {
-      throw new Error(`${this.kind} "${resolver.name}" ist bereits registriert.`);
+      throw new Error(`${this.kind} "${resolver.name}" is already registered.`);
     }
     const priority = Number.isFinite(options.priority)
       ? options.priority
@@ -53,7 +53,7 @@ class ResolverRegistry {
     return this;
   }
 
-  /** Mehrere auf einmal registrieren. */
+  /** Register several at once. */
   registerAll(resolvers = []) {
     for (const resolver of resolvers) this.register(resolver);
     return this;
@@ -72,7 +72,7 @@ class ResolverRegistry {
     return item ? item.resolver : null;
   }
 
-  /** Alle Resolver nach Priorität (höchste zuerst), stabil bei Gleichstand. */
+  /** All resolvers by priority (highest first), stable on ties. */
   list() {
     return this._items
       .slice()
@@ -80,7 +80,7 @@ class ResolverRegistry {
       .map((item) => item.resolver);
   }
 
-  /** Namen inklusive Priorität, für Logging/Diagnose. */
+  /** Names including priority, for logging/diagnostics. */
   describe() {
     return this._items
       .slice()
@@ -89,7 +89,7 @@ class ResolverRegistry {
   }
 
   /**
-   * Passende Resolver für eine URL, nach Priorität sortiert.
+   * Matching resolvers for a URL, sorted by priority.
    * @param {string} url
    * @param {{ logger?: Object }} [options]
    * @returns {Object[]}
@@ -100,12 +100,12 @@ class ResolverRegistry {
       try {
         return !!resolver.canHandle(url);
       } catch (err) {
-        // Ein fehlerhaftes canHandle darf die anderen Resolver nicht blockieren.
+        // A faulty canHandle must not block the other resolvers.
         if (logger) {
           logger.step("resolver-fail", {
             resolver: resolver.name,
             code: "EXTRACTION_FAILED",
-            message: `canHandle warf: ${err && err.message ? err.message : err}`
+            message: `canHandle threw: ${err && err.message ? err.message : err}`
           });
         }
         return false;
@@ -113,7 +113,7 @@ class ResolverRegistry {
     });
   }
 
-  /** Der erste passende Resolver oder null. */
+  /** The first matching resolver or null. */
   find(url, options = {}) {
     const matches = this.match(url, options);
     return matches.length ? matches[0] : null;

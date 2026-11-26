@@ -1,9 +1,9 @@
 /**
- * Integrationstests über die komplette Kette:
+ * Integration tests over the complete chain:
  *   Input URL -> SiteResolver -> ProviderResolver -> ResolvedMedia -> Downloader
  *
- * Sie bilden die Abläufe nach, die main.js auslöst (download:start und
- * podcast:resolve), ohne Electron zu starten.
+ * They replicate the flows that main.js triggers (download:start and
+ * podcast:resolve) without starting Electron.
  */
 
 const test = require("node:test");
@@ -45,7 +45,7 @@ const runnerDer = (dateipfad) => {
   };
 };
 
-test("YouTube-Workflow: URL geht unverändert an yt-dlp", async () => {
+test("YouTube workflow: URL goes to yt-dlp unchanged", async () => {
   const manager = createDefaultResolverManager({ cache: null });
   const context = createResolveContext({});
   const media = await manager.resolveOne("https://www.youtube.com/watch?v=abc", context);
@@ -64,7 +64,7 @@ test("YouTube-Workflow: URL geht unverändert an yt-dlp", async () => {
   assert.equal(aufrufe[0].impersonate, true);
 });
 
-test("Podcast-Workflow: Feed liefert mehrere Episoden, Download nimmt die Episode", async () => {
+test("Podcast workflow: feed returns several episodes, download takes the episode", async () => {
   const manager = createDefaultResolverManager({ cache: null });
   const context = createResolveContext({
     services: { http: async () => ({ ok: true, status: 200, text: async () => FEED }) }
@@ -84,7 +84,7 @@ test("Podcast-Workflow: Feed liefert mehrere Episoden, Download nimmt die Episod
     { title: "Folge 1", audioUrl: "https://cdn.example.com/folge1.mp3", pubDate: "Tue, 29 Jul 2025" }
   ]);
 
-  // 2. download:start mit der gewählten Episode
+  // 2. download:start with the chosen episode
   const media = await manager.resolveOne(episoden[1].audioUrl, createResolveContext({}));
   assert.equal(media.provider, "direct");
 
@@ -98,8 +98,8 @@ test("Podcast-Workflow: Feed liefert mehrere Episoden, Download nimmt die Episod
   assert.equal(aufrufe[0].format, "mp3");
 });
 
-test("eine neue Seite kommt ohne Änderung am Downloader dazu", async () => {
-  // Ein Seiten-Resolver, der zwei Hoster-Links auf einer Übersichtsseite findet.
+test("a new site is added without changing the downloader", async () => {
+  // A site resolver that finds two host links on an overview page.
   class BeispielSeite extends SiteResolver {
     constructor() { super({ name: "beispiel-seite", priority: 80 }); }
     canHandle(url) { return /(^|\.)beispiel\.example$/.test(new URL(url).hostname); }
@@ -115,7 +115,7 @@ test("eine neue Seite kommt ohne Änderung am Downloader dazu", async () => {
   const alle = await manager.resolve("https://beispiel.example/serie/1", createResolveContext({}));
 
   assert.equal(alle.length, 2);
-  assert.equal(alle[0].provider, "direct", "die Direktdateien erkennt der Standard-Provider");
+  assert.equal(alle[0].provider, "direct", "the default provider recognizes the direct files");
   assert.equal(alle[0].sourceUrl, "https://beispiel.example/serie/1");
 
   const { runDownload, aufrufe } = runnerDer("C:/Downloads/teil1.mp4");
@@ -125,14 +125,14 @@ test("eine neue Seite kommt ohne Änderung am Downloader dazu", async () => {
   assert.equal(aufrufe[0].url, "https://cdn.beispiel.example/teil1.mp4");
 });
 
-test("Browser-Fallback: Stufe 5 fragt gezielt die Browser-Extraktion", async () => {
+test("Browser fallback: stage 5 explicitly requests the browser extraction", async () => {
   const manager = createDefaultResolverManager({
     cache: null,
     findStream: async () => "https://cdn.beispiel.example/live.m3u8"
   });
   const context = createResolveContext({ flags: { playwrightFallback: true } });
   const media = await manager.resolveOne("https://js-seite.example/player", context);
-  assert.equal(media.provider, "yt-dlp", "zuerst versucht es weiterhin yt-dlp");
+  assert.equal(media.provider, "yt-dlp", "it still tries yt-dlp first");
 
   const nichtUnterstuetzt = new Error("ERROR: Unsupported URL: https://js-seite.example/player");
   let aufruf = 0;
@@ -158,7 +158,7 @@ test("Browser-Fallback: Stufe 5 fragt gezielt die Browser-Extraktion", async () 
   ]);
 });
 
-test("nicht auflösbare Eingaben melden UNSUPPORTED_URL (main.js reicht sie dann an yt-dlp)", async () => {
+test("unresolvable inputs report UNSUPPORTED_URL (main.js then passes them to yt-dlp)", async () => {
   const manager = createDefaultResolverManager({ cache: null });
   await assert.rejects(
     () => manager.resolveOne("ytsearch:katzenvideos", createResolveContext({})),
@@ -166,7 +166,7 @@ test("nicht auflösbare Eingaben melden UNSUPPORTED_URL (main.js reicht sie dann
   );
 });
 
-test("der komplette Ablauf wird ohne Secrets protokolliert", async () => {
+test("the complete flow is logged without secrets", async () => {
   const zeilen = [];
   const logger = createLogger({ sink: (line) => zeilen.push(line) });
   const manager = createDefaultResolverManager({ cache: null });

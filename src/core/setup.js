@@ -1,8 +1,8 @@
 /**
- * Zusammenbau der Standard-Pipeline.
+ * Assembly of the default pipeline.
  *
- * Eine Stelle, an der Registries, Cache und Logger verdrahtet werden - der
- * Rest der App (main.js) kennt nur noch createDefaultResolverManager() und
+ * One place where registries, cache and logger are wired together. The
+ * rest of the app (main.js) only knows createDefaultResolverManager() and
  * createResolveContext().
  */
 
@@ -16,8 +16,8 @@ const { nullLogger } = require("./logger");
  * @param {Object} [options]
  * @param {Array}  [options.extraSites]
  * @param {Array}  [options.extraProviders]
- * @param {Function} [options.findStream] Ersatz für den Playwright-Finder (Tests)
- * @param {Object|null} [options.cache]   null = ohne Cache
+ * @param {Function} [options.findStream] Replacement for the Playwright finder (tests)
+ * @param {Object|null} [options.cache]   null = no cache
  * @param {Object} [options.logger]
  * @returns {ResolverManager}
  */

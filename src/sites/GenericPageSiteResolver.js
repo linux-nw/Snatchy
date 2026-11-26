@@ -1,13 +1,13 @@
 /**
- * Generischer SiteResolver: die URL ist bereits die Videoseite.
+ * Generic SiteResolver: the URL already is the video page.
  *
- * Das ist das Verhalten der App vor der Umstellung - eine eingegebene URL
- * ging direkt an yt-dlp. Damit bleibt YouTube & Co. exakt so schnell wie
- * vorher (kein zusätzlicher Netzwerkzugriff) und die neue Pipeline hat
- * trotzdem für jede URL einen definierten Einstiegspunkt.
+ * This is the behavior of the app before the switch: an entered URL
+ * went straight to yt-dlp. This keeps YouTube & co. exactly as fast as
+ * before (no additional network access) and the new pipeline still has
+ * a defined entry point for every URL.
  *
- * Priorität bewusst ganz unten: jeder spezialisierte SiteResolver kommt
- * zuerst dran, dieser hier fängt den Rest auf.
+ * Priority deliberately at the very bottom: every specialized SiteResolver
+ * goes first, this one catches the rest.
  */
 
 const { SiteResolver } = require("./SiteResolver");
@@ -24,7 +24,7 @@ class GenericPageSiteResolver extends SiteResolver {
 
   /**
    * @param {string} url
-   * @returns {Promise<Array>} genau eine Referenz: die URL selbst
+   * @returns {Promise<Array>} exactly one reference: the URL itself
    */
   async resolve(url) {
     return [{ sourceUrl: url, providerUrl: url }];

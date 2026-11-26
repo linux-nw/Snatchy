@@ -1,18 +1,18 @@
 /**
- * Basis für SiteResolver.
+ * Base for SiteResolver.
  *
- * Ein SiteResolver erkennt eine Übersichts- oder Videoseite und extrahiert
- * daraus die eigentlichen Video-/Provider-Links. Er lädt nichts herunter und
- * löst auch keine Medien-URL auf, sondern liefert normalisierte Referenzen:
+ * A SiteResolver recognizes an overview or video page and extracts
+ * the actual video/provider links from it. It downloads nothing and
+ * does not resolve a media URL either, but returns normalized references:
  *
  *   { sourceUrl, providerUrl, title?, thumbnail?, duration?, meta? }
  *
- * Mehrere Treffer auf einer Seite sind ausdrücklich erlaubt (mehrere Hoster
- * für dieselbe Folge, Episodenlisten ...). Den Rest erledigt der
+ * Several hits on one page are explicitly allowed (several hosts
+ * for the same episode, episode lists ...). The rest is handled by the
  * ProviderResolver.
  *
- * Ein neuer SiteResolver braucht nur name, priority, canHandle und resolve,
- * siehe ARCHITECTURE.md.
+ * A new SiteResolver only needs name, priority, canHandle and resolve,
+ * see ARCHITECTURE.md.
  */
 
 const { isHttpUrl } = require("../core/types");
@@ -22,7 +22,7 @@ class SiteResolver {
    * @param {{ name: string, priority?: number }} options
    */
   constructor(options = {}) {
-    if (!options.name) throw new TypeError("SiteResolver: name fehlt.");
+    if (!options.name) throw new TypeError("SiteResolver: name missing.");
     this.name = options.name;
     this.priority = Number.isFinite(options.priority) ? options.priority : 50;
   }
@@ -41,7 +41,7 @@ class SiteResolver {
    * @returns {Promise<Array>} Media-Referenzen
    */
   async resolve(_url, _context) {
-    throw new Error(`SiteResolver "${this.name}": resolve() ist nicht implementiert.`);
+    throw new Error(`SiteResolver "${this.name}": resolve() is not implemented.`);
   }
 }
 

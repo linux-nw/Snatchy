@@ -1,16 +1,16 @@
 /**
- * Browser-/Session-basierte Extraktion: startet headless Chromium via
- * Playwright, lauscht auf Netzwerk-Responses und gibt die erste gefundene
- * Media-URL (.m3u8 / .mp4 / .ts) zurück, oder null.
+ * Browser/session-based extraction: starts headless Chromium via
+ * Playwright, listens to network responses and returns the first found
+ * media URL (.m3u8 / .mp4 / .ts), or null.
  *
- * Unverändert aus main.js übernommen (nur Logging optional gemacht), damit
- * die letzte Fallback-Stufe sich exakt wie bisher verhält.
+ * Taken over unchanged from main.js (only made logging optional), so that
+ * the last fallback stage behaves exactly as before.
  *
- * Es wird ausschließlich beobachtet, was die Seite ohnehin lädt. Kein Umgehen
- * von Zugriffsschutz, keine DRM-Entschlüsselung.
+ * Only what the page loads anyway is observed. No circumvention
+ * of access protection, no DRM decryption.
  *
- * Wirft mit .code PLAYWRIGHT_MISSING / PLAYWRIGHT_CHROMIUM_MISSING bei
- * fehlendem Setup.
+ * Throws with .code PLAYWRIGHT_MISSING / PLAYWRIGHT_CHROMIUM_MISSING when
+ * the setup is missing.
  */
 
 const findStreamWithPlaywright = async (url, sendLog = () => {}) => {
@@ -62,10 +62,10 @@ const findStreamWithPlaywright = async (url, sendLog = () => {}) => {
           await playEl.click();
           await page.waitForTimeout(5_000);
         }
-      } catch { /* kein Play-Element – weiter */ }
+      } catch { /* no play element, continue */ }
     }
 
-    // .m3u8 (HLS) bevorzugen, dann .mp4, dann Rest
+    // Prefer .m3u8 (HLS), then .mp4, then the rest
     const sorted = [...mediaUrls].sort((a, b) => {
       const score = (u) => (u.includes(".m3u8") ? 2 : u.includes(".mp4") ? 1 : 0);
       return score(b) - score(a);

@@ -11,7 +11,7 @@ const {
   looksLikeBlock
 } = require("../src/core/errors");
 
-test("classifyMessage erkennt Auth-Fehler", () => {
+test("classifyMessage detects auth errors", () => {
   assert.equal(
     classifyMessage("ERROR: Sign in to confirm your age. Use --cookies-from-browser"),
     ResolveErrorCode.AUTH_REQUIRED
@@ -22,7 +22,7 @@ test("classifyMessage erkennt Auth-Fehler", () => {
   );
 });
 
-test("classifyMessage erkennt abgelaufene Sessions", () => {
+test("classifyMessage detects expired sessions", () => {
   assert.equal(
     classifyMessage("The provided YouTube account cookies are no longer valid"),
     ResolveErrorCode.SESSION_EXPIRED
@@ -30,51 +30,51 @@ test("classifyMessage erkennt abgelaufene Sessions", () => {
   assert.equal(classifyMessage("HTTP Error 401: Unauthorized"), ResolveErrorCode.SESSION_EXPIRED);
 });
 
-test("classifyMessage erkennt Captcha vor Auth", () => {
-  // Enthält "Sign in", ist aber ein Bot-Check.
+test("classifyMessage detects captcha before auth", () => {
+  // Contains "Sign in", but is a bot check.
   assert.equal(
     classifyMessage("Sign in to confirm you're not a bot"),
     ResolveErrorCode.CAPTCHA_REQUIRED
   );
 });
 
-test("classifyMessage erkennt Geo-Sperren", () => {
+test("classifyMessage detects geo restrictions", () => {
   assert.equal(
     classifyMessage("The uploader has not made this video available in your country"),
     ResolveErrorCode.GEO_RESTRICTED
   );
 });
 
-test("classifyMessage erkennt Netzwerkfehler", () => {
+test("classifyMessage detects network errors", () => {
   assert.equal(classifyMessage("getaddrinfo ENOTFOUND example.com"), ResolveErrorCode.NETWORK_ERROR);
   assert.equal(classifyMessage("fetch failed"), ResolveErrorCode.NETWORK_ERROR);
 });
 
-test("classifyMessage erkennt nicht unterstützte URLs", () => {
+test("classifyMessage detects unsupported URLs", () => {
   assert.equal(
     classifyMessage("ERROR: Unsupported URL: https://example.com/page"),
     ResolveErrorCode.UNSUPPORTED_URL
   );
 });
 
-test("classifyMessage erkennt Provider-/Blockfehler", () => {
+test("classifyMessage detects provider/block errors", () => {
   assert.equal(classifyMessage("HTTP Error 410: Gone"), ResolveErrorCode.PROVIDER_ERROR);
   assert.equal(classifyMessage("Unable to download webpage"), ResolveErrorCode.PROVIDER_ERROR);
 });
 
-test("classifyMessage fällt auf EXTRACTION_FAILED zurück", () => {
+test("classifyMessage falls back to EXTRACTION_FAILED", () => {
   assert.equal(classifyMessage("irgendwas ging schief"), ResolveErrorCode.EXTRACTION_FAILED);
   assert.equal(classifyMessage(""), ResolveErrorCode.EXTRACTION_FAILED);
 });
 
-test("die bestehenden Heuristiken bleiben erhalten", () => {
+test("the existing heuristics are preserved", () => {
   assert.equal(isUnsupportedUrl("ERROR: Unsupported URL: x"), true);
   assert.equal(isUnsupportedUrl("HTTP Error 403"), false);
   assert.equal(looksLikeBlock("HTTP Error 403: Forbidden"), true);
   assert.equal(looksLikeBlock("alles gut"), false);
 });
 
-test("toResolveError übernimmt Node-Fehlercodes", () => {
+test("toResolveError takes over Node error codes", () => {
   const err = Object.assign(new Error("yt-dlp wurde nicht gefunden."), { code: "ENOENT" });
   const resolved = toResolveError(err, { resolver: "yt-dlp" });
   assert.equal(resolved.code, ResolveErrorCode.DEPENDENCY_MISSING);
@@ -82,7 +82,7 @@ test("toResolveError übernimmt Node-Fehlercodes", () => {
   assert.equal(resolved.cause, err);
 });
 
-test("toResolveError lässt strukturierte Fehler unverändert", () => {
+test("toResolveError leaves structured errors unchanged", () => {
   const original = new ResolveError(ResolveErrorCode.AUTH_REQUIRED, "Login nötig");
   const resolved = toResolveError(original, { resolver: "x" });
   assert.equal(resolved, original);
@@ -90,7 +90,7 @@ test("toResolveError lässt strukturierte Fehler unverändert", () => {
   assert.equal(resolved.resolver, "x");
 });
 
-test("pickMostRelevantError bevorzugt die hilfreichste Aussage", () => {
+test("pickMostRelevantError prefers the most helpful statement", () => {
   const picked = pickMostRelevantError([
     new ResolveError(ResolveErrorCode.UNSUPPORTED_URL, "nicht meine Baustelle"),
     new ResolveError(ResolveErrorCode.AUTH_REQUIRED, "Login nötig"),
@@ -100,12 +100,12 @@ test("pickMostRelevantError bevorzugt die hilfreichste Aussage", () => {
   assert.equal(pickMostRelevantError([]), null);
 });
 
-test("unbekannte Codes werden auf EXTRACTION_FAILED normalisiert", () => {
+test("unknown codes are normalized to EXTRACTION_FAILED", () => {
   const err = new ResolveError("QUATSCH", "hm");
   assert.equal(err.code, ResolveErrorCode.EXTRACTION_FAILED);
 });
 
-test("Abbruch ist nicht wiederholbar", () => {
+test("cancellation is not retryable", () => {
   const err = new ResolveError(ResolveErrorCode.CANCELLED, "Vorgang abgebrochen.");
   assert.equal(err.retryable, false);
 });

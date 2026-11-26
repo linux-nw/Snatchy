@@ -1,12 +1,12 @@
 /**
- * ProviderResolver für JS-gerenderte Seiten: ein headless Browser lädt die
- * Seite und die tatsächlich angeforderte Stream-URL wird mitgeschnitten.
+ * ProviderResolver for JS-rendered pages: a headless browser loads the
+ * page and the stream URL that is actually requested is captured.
  *
- * Das ist die teuerste Methode (Browserstart, Wartezeiten), deshalb:
- * - niedrigste Priorität,
- * - nur aktiv, wenn der Nutzer den Fallback in den Einstellungen einschaltet
+ * This is the most expensive method (browser start, wait times), therefore:
+ * - lowest priority,
+ * - only active if the user enables the fallback in the settings
  *   (context.flags.playwrightFallback),
- * - in der Download-Kaskade erst als letzte Stufe.
+ * - in the download cascade only as the last stage.
  */
 
 const { ProviderResolver } = require("./ProviderResolver");
@@ -14,7 +14,7 @@ const { isHttpUrl } = require("../core/types");
 const { ResolveError, ResolveErrorCode } = require("../core/errors");
 const { findStreamWithPlaywright } = require("./playwrightStreamFinder");
 
-/** Playwright-Setupfehler auf strukturierte Codes abbilden. */
+/** Map Playwright setup errors to structured codes. */
 const mapPlaywrightError = (err, url, name) => {
   const code = err && err.code;
   if (code === "PLAYWRIGHT_MISSING" || code === "PLAYWRIGHT_CHROMIUM_MISSING") {
@@ -60,7 +60,7 @@ class PlaywrightProviderResolver extends ProviderResolver {
     }
     if (context.throwIfAborted) context.throwIfAborted();
 
-    // Ein injizierter Finder (Tests, alternative Browser-Session) hat Vorrang.
+    // An injected finder (tests, alternative browser session) takes precedence.
     const findStream = typeof (context.services || {}).findStream === "function"
       ? context.services.findStream
       : this._findStream;

@@ -1,32 +1,32 @@
 /**
- * Gemeinsame Typdefinitionen der Resolver-Architektur.
+ * Shared type definitions of the resolver architecture.
  *
- * Das Projekt ist bewusst reines CommonJS ohne Build-Schritt, die "Interfaces"
- * sind daher JSDoc-Typedefs plus die Normalisierungsfunktionen in dieser Datei.
+ * The project is deliberately plain CommonJS without a build step, so the "interfaces"
+ * are JSDoc typedefs plus the normalization functions in this file.
  *
  * @typedef {Object} MediaFormat
- * @property {string} [formatId]   Kennung des Formats beim Provider
- * @property {string} [url]        Direkte Medien-URL dieses Formats
- * @property {string} [ext]        Container/Endung (mp4, m4a, m3u8 ...)
- * @property {number} [height]     Videohöhe in Pixeln
- * @property {number} [tbr]        Gesamtbitrate in kbit/s
+ * @property {string} [formatId]   Identifier of the format at the provider
+ * @property {string} [url]        Direct media URL of this format
+ * @property {string} [ext]        Container/extension (mp4, m4a, m3u8 ...)
+ * @property {number} [height]     Video height in pixels
+ * @property {number} [tbr]        Total bitrate in kbit/s
  * @property {string} [vcodec]
  * @property {string} [acodec]
  * @property {string} [note]
  *
  * @typedef {Object} ResolvedMedia
- * @property {string}  sourceUrl        Ursprüngliche Seite/URL, aus der die Referenz stammt
- * @property {string}  [providerUrl]    Von einem SiteResolver gefundene Hoster-/Provider-URL.
- *                                      Zwischenschritt: noch kein Download, nur eine Referenz.
- * @property {string}  [mediaUrl]       Vom ProviderResolver aufgelöste, herunterladbare URL
+ * @property {string}  sourceUrl        Original page/URL the reference comes from
+ * @property {string}  [providerUrl]    Host/provider URL found by a SiteResolver.
+ *                                      Intermediate step: not a download yet, only a reference.
+ * @property {string}  [mediaUrl]       Downloadable URL resolved by the ProviderResolver
  * @property {string}  [title]
  * @property {string}  [thumbnail]
- * @property {number}  [duration]       Sekunden
+ * @property {number}  [duration]       Seconds
  * @property {MediaFormat[]} [formats]
- * @property {string}  [provider]       Name des Providers ("yt-dlp", "direct", "podcast-rss" ...)
- * @property {boolean} [requiresAuth]   Provider signalisiert: ohne Auth nicht abspielbar
- * @property {string}  [resolver]       Name des Resolvers, der das Ergebnis geliefert hat
- * @property {Object}  [meta]           Freie, nicht sensible Zusatzdaten (z. B. pubDate)
+ * @property {string}  [provider]       Name of the provider ("yt-dlp", "direct", "podcast-rss" ...)
+ * @property {boolean} [requiresAuth]   Provider signals: not playable without auth
+ * @property {string}  [resolver]       Name of the resolver that delivered the result
+ * @property {Object}  [meta]           Free, non-sensitive extra data (e.g. pubDate)
  *
  * @typedef {Object} Cookie
  * @property {string} name
@@ -39,8 +39,8 @@
  * @property {"none"|"cookies"|"session"} type
  * @property {Cookie[]} [cookies]
  * @property {string}   [sessionId]
- * @property {string}   [cookiesFromBrowser] Referenz auf einen Browser, aus dem Cookies
- *                                           erst zur Laufzeit gelesen werden (kein Secret).
+ * @property {string}   [cookiesFromBrowser] Reference to a browser from which cookies
+ *                                           are read only at runtime (not a secret).
  *
  * @typedef {Object} ResolveContext
  * @property {AuthContext} [auth]
@@ -48,8 +48,8 @@
  * @property {Cookie[]} [cookies]
  * @property {string} [userAgent]
  * @property {AbortSignal} [signal]
- * @property {Object} [flags]     Feature-Schalter (z. B. playwrightFallback)
- * @property {Object} [services]  Injizierte Abhängigkeiten (http, findStream ...)
+ * @property {Object} [flags]     Feature switches (e.g. playwrightFallback)
+ * @property {Object} [services]  Injected dependencies (http, findStream ...)
  * @property {Object} [logger]
  * @property {Object} [cache]
  *
@@ -66,11 +66,11 @@
  * @property {(url: string, context: ResolveContext) => Promise<ResolvedMedia>} resolve
  */
 
-/** Erlaubte Protokolle für Resolver-Eingaben. */
+/** Allowed protocols for resolver inputs. */
 const SUPPORTED_PROTOCOLS = new Set(["http:", "https:"]);
 
 /**
- * Tolerantes URL-Parsing: liefert das URL-Objekt oder null (statt zu werfen).
+ * Tolerant URL parsing: returns the URL object or null (instead of throwing).
  * @param {string} url
  * @returns {URL|null}
  */
@@ -85,7 +85,7 @@ const parseUrl = (url) => {
 
 /**
  * @param {string} url
- * @returns {boolean} true, wenn es eine absolute http(s)-URL ist.
+ * @returns {boolean} true if it is an absolute http(s) URL.
  */
 const isHttpUrl = (url) => {
   const parsed = parseUrl(url);
@@ -93,7 +93,7 @@ const isHttpUrl = (url) => {
 };
 
 /**
- * Hostname in Kleinbuchstaben ohne führendes "www.", oder "" bei ungültiger URL.
+ * Hostname in lowercase without a leading "www.", or "" for an invalid URL.
  * @param {string} url
  */
 const hostOf = (url) => {
@@ -102,7 +102,7 @@ const hostOf = (url) => {
 };
 
 /**
- * Prüft, ob der Host gleich einer Domain ist oder eine Subdomain davon.
+ * Checks whether the host equals a domain or is a subdomain of it.
  * @param {string} url
  * @param {string[]} domains
  */
@@ -124,7 +124,7 @@ const toCleanString = (value) => {
 };
 
 /**
- * Normalisiert ein einzelnes Format auf die MediaFormat-Struktur.
+ * Normalizes a single format to the MediaFormat structure.
  * @param {any} raw
  * @returns {MediaFormat|null}
  */
@@ -152,9 +152,9 @@ const normalizeFormat = (raw) => {
 };
 
 /**
- * Bringt ein beliebiges Resolver-Ergebnis auf die einheitliche ResolvedMedia-Form.
- * Unbekannte Felder werden verworfen, damit die Downloader-Schicht wirklich nur
- * mit dem normalisierten Ergebnis arbeitet und nichts über Provider-Interna weiß.
+ * Brings any resolver result into the uniform ResolvedMedia form.
+ * Unknown fields are dropped so the downloader layer really only works
+ * with the normalized result and knows nothing about provider internals.
  *
  * @param {any} raw
  * @param {{ sourceUrl?: string, resolver?: string, provider?: string }} [defaults]
@@ -162,11 +162,11 @@ const normalizeFormat = (raw) => {
  */
 const normalizeMedia = (raw, defaults = {}) => {
   if (!raw || typeof raw !== "object") {
-    throw new TypeError("normalizeMedia: Objekt erwartet.");
+    throw new TypeError("normalizeMedia: object expected.");
   }
   const sourceUrl = toCleanString(raw.sourceUrl) || toCleanString(defaults.sourceUrl);
   if (!sourceUrl) {
-    throw new TypeError("normalizeMedia: sourceUrl fehlt.");
+    throw new TypeError("normalizeMedia: sourceUrl missing.");
   }
 
   /** @type {ResolvedMedia} */
@@ -199,15 +199,15 @@ const normalizeMedia = (raw, defaults = {}) => {
 };
 
 /**
- * Die URL, mit der die Downloader-Schicht arbeitet: aufgelöste Medien-URL,
- * sonst die Provider-Referenz, sonst die Quelle.
+ * The URL the downloader layer works with: resolved media URL,
+ * otherwise the provider reference, otherwise the source.
  * @param {ResolvedMedia} media
  * @returns {string}
  */
 const downloadUrlOf = (media) => media.mediaUrl || media.providerUrl || media.sourceUrl;
 
 /**
- * Ein Ergebnis gilt als "aufgelöst", wenn eine konkrete Medien-URL vorliegt.
+ * A result counts as "resolved" when a concrete media URL is present.
  * @param {ResolvedMedia} media
  */
 const isResolved = (media) => !!(media && media.mediaUrl);

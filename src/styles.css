@@ -1,6 +1,6 @@
 /* ============================================================
-   Vela Design System für Snatchy
-   Importiert alle Design Tokens und Komponentenstyles
+   Vela Design System for Snatchy
+   Imports all design tokens and component styles
    ============================================================ */
 
 /* Importiere Design Tokens */
@@ -61,7 +61,7 @@
   letter-spacing: var(--tracking-snug);
 }
 
-/* Einstellungen-Button (links neben dem Warteschlangen-Button) */
+/* Settings button (to the left of the queue button) */
 .settings-btn {
   width: var(--control-md);
   height: var(--control-md);
@@ -138,10 +138,10 @@
   position: relative;
 }
 
-/* Kleiner, proportionaler Abstand über der Eingabe-Karte: die Karte sitzt
-   weit oben (mit etwas Luft zur Titelleiste) und bleibt dort – sie wächst
-   NICHT in die Mitte, weil flex-grow 0 ist. --dl-offset in vh = skaliert
-   sanft mit der Fensterhöhe. Der Regler dafür ist --dl-offset. */
+/* Small, proportional spacing above the input card: the card sits
+   near the top (with some air to the title bar) and stays there; it grows
+   NOT into the middle because flex-grow is 0. --dl-offset in vh = scales
+   gently with the window height. The control for it is --dl-offset. */
 .dl-top-spacer {
   --dl-offset: 6vh;
   flex: 0 1 var(--dl-offset);
@@ -161,7 +161,7 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* Hinweis-Banner bei fehlenden Backend-Abhängigkeiten (yt-dlp / ffmpeg) */
+/* Hint banner for missing backend dependencies (yt-dlp / ffmpeg) */
 .dep-warning {
   display: flex;
   align-items: flex-start;
@@ -180,7 +180,7 @@
   margin-top: 1px;
 }
 
-/* Weitere Abstand nach oben */
+/* Additional spacing at the top */
 .opts-row {
   display: flex;
   align-items: center;
@@ -192,7 +192,7 @@
   animation: slide-in 200ms ease-out;
 }
 
-/* Plattform-Badge: rein informativ, zeigt an, welche Seite erkannt wurde. */
+/* Platform badge: purely informational, shows which site was detected. */
 .platform-badge {
   display: flex;
   align-items: center;
@@ -223,8 +223,8 @@
   }
 }
 
-/* Warteschlange + Verlauf nebeneinander als zwei gleich hohe Spalten, jede
-   mit eigenem, unabhängigem Scrollbereich — Eingabe-Karte bleibt oben fix. */
+/* Queue + history side by side as two equally tall columns, each
+   with its own independent scroll area; the input card stays fixed at the top. */
 .dl-sections {
   flex: 1;
   min-height: 0;
@@ -233,10 +233,10 @@
   gap: 24px;
 }
 
-/* Schlanke, dezente Scrollbar für alle scrollenden Bereiche (Warteschlange-
-   /Verlauf-Listen, Einstellungen, Transkript-Textfeld) statt der klobigen
-   Standard-Scrollbar. Deutlicher Track-Rand oben/unten, damit der Balken
-   sichtbar abgesetzt ist statt bis an die Kante zu laufen. */
+/* Slim, subtle scrollbar for all scrolling areas (queue/
+   history lists, settings, transcript text field) instead of the clunky
+   default scrollbar. Clear track edge at top/bottom so the bar
+   is visibly set off instead of running up to the edge. */
 .dl-list,
 .settings-overlay-content .settings,
 .vtxt-area {
@@ -273,8 +273,8 @@
   background-clip: padding-box;
 }
 
-/* Download Section — Warteschlange oder Verlauf, eine Spalte im .dl-sections
-   Grid; die Liste darin scrollt unabhängig von der jeweils anderen Spalte. */
+/* Download section: queue or history, one column in the .dl-sections
+   grid; the list inside scrolls independently of the other column. */
 .dl-section {
   min-height: 0;
   overflow: hidden;
@@ -412,10 +412,10 @@
   transform: rotate(90deg);
 }
 
-/* Zwei unabhängige Spalten statt Grid-Zeilen: jede Karte stapelt sich direkt
-   unter der vorherigen in ihrer eigenen Spalte, ohne dass unterschiedlich
-   hohe Karten (z. B. mit/ohne Hinweistext) in der jeweils anderen Spalte
-   Leerraum durch erzwungen gleiche Zeilenhöhe erzeugen. */
+/* Two independent columns instead of grid rows: every card stacks directly
+   below the previous one in its own column, without cards of different
+   heights (e.g. with/without hint text) creating empty space in the other
+   column through a forced equal row height. */
 .settings-cols {
   display: flex;
   align-items: flex-start;
@@ -455,7 +455,7 @@
 }
 
 /* ============================================================
-   Vela Component Styles (inline CSS für alle Komponenten)
+   Vela Component Styles (inline CSS for all components)
    ============================================================ */
 
 /* Vela Input */
@@ -477,9 +477,9 @@
 .vurl-paste:hover { background: var(--vela-primary-soft); color: var(--vela-primary); }
 .vurl-paste svg, .vurl-clr svg { width: 15px; height: 15px; }
 
-/* Vela FormatToggle — inhaltsbreite Segmente (Labels sind unterschiedlich lang)
-   mit einer einzigen gleitenden Markierung (immer teal). Position/Breite der
-   Markierung werden per JS aus den echten Button-Rects gesetzt (siehe FormatToggle). */
+/* Vela FormatToggle: content-width segments (labels have different lengths)
+   with a single sliding marker (always teal). Position/width of the
+   marker are set via JS from the real button rects (see FormatToggle). */
 .vft { position: relative; display: inline-flex; background: var(--vela-surface-3); border-radius: var(--radius-md); padding: 3px; gap: 2px; border: 1px solid var(--vela-border-subtle); }
 .vft-indicator {
   position: absolute;
@@ -494,15 +494,15 @@
 }
 .vft-btn { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; border: none; background: transparent; cursor: pointer; border-radius: calc(var(--radius-md) - 2px); padding: 0 16px; height: 32px; font: var(--type-sm); font-weight: 500; color: var(--vela-text-3); transition: color 200ms ease; }
 .vft-btn.on { color: var(--vela-on-primary); }
-/* Überschreibt den grauen Hover aus dem Design-System-Bundle (gleicher Klassenname
-   .vft-btn dort, Bundle-Regel kennt aber nur seine eigene .vft-active-Klasse und
-   greift daher auch bei UNSEREM aktiven ".on"-Button – der graue Overlay lag dann
-   über der teal Markierung). Beide Zustände hier explizit neutralisiert. */
+/* Overrides the gray hover from the design system bundle (same class name
+   .vft-btn there, but the bundle rule only knows its own .vft-active class and
+   therefore also applies to OUR active ".on" button; the gray overlay then lay
+   over the teal marker). Both states are explicitly neutralized here. */
 .vft .vft-btn:hover:not(.on) { background: transparent; color: var(--vela-text-3); }
 .vft .vft-btn.on:hover { background: transparent; color: var(--vela-on-primary); }
 .vft-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 .vft-tag { font-size: 9px; font-weight: 700; letter-spacing: .07em; background: oklch(0 0 0/.22); padding: 1px 4px; border-radius: 3px; }
-/* Format passt nicht zur eingefügten URL (z. B. Podcast bei einem YouTube-Link) */
+/* Format does not fit the pasted URL (e.g. podcast with a YouTube link) */
 .vft-btn.vft-disabled { opacity: .35; cursor: not-allowed; }
 .vft .vft-btn.vft-disabled:hover { background: transparent; color: var(--vela-text-3); }
 
@@ -606,9 +606,9 @@
 .vsel-arr { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--vela-text-3); }
 
 /* Vela Switch — saubere, weiche Animation.
-   Höhere Spezifität (.vela-root …) überschreibt das Bundle, das den Thumb
-   sonst hart per `left` verschiebt. Wir lassen `left` fix bei 2px und
-   bewegen den Thumb ausschließlich per transform (GPU-weich, kein Springen). */
+   Higher specificity (.vela-root ...) overrides the bundle, which otherwise
+   moves the thumb hard via `left`. We keep `left` fixed at 2px and
+   move the thumb only via transform (GPU-smooth, no jumping). */
 .vela-root .vsw-track {
   transition: background 200ms ease, border-color 200ms ease, box-shadow 150ms ease;
 }
@@ -626,7 +626,7 @@
   transform: translateY(-50%) translateX(12px);
 }
 
-/* Settings Overlay (für Tab-Ersatz) */
+/* Settings overlay (replacement for tabs) */
 .settings-overlay {
   position: fixed;
   inset: 0;
@@ -677,7 +677,7 @@
   height: 14px;
 }
 
-/* "Gespeichert"-Hinweis: blendet kurz ein, sobald sich ein Setting ändert. */
+/* "Saved" hint: fades in briefly as soon as a setting changes. */
 .settings-saved {
   position: absolute;
   top: 16px;
@@ -750,9 +750,9 @@
   border-bottom: 1px solid var(--vela-border-subtle);
   flex-shrink: 0;
 }
-/* Eigene Zeile für die Auswahlzahl, oberhalb der Buttons – so verschiebt eine
-   wechselnde Ziffernbreite (z. B. "5 von 300" ↔ "300 von 300") nie die
-   Buttons darunter, weil sie in einer eigenen Blockzeile steht. */
+/* Own row for the selection count, above the buttons, so a
+   changing digit width (e.g. "5 von 300" <-> "300 von 300") never moves the
+   buttons below, because it sits in its own block row. */
 .podpick-count-line {
   font: var(--type-caption);
   color: var(--vela-text-3);
@@ -880,7 +880,7 @@
   flex-shrink: 0;
 }
 
-/* Global overrides für Electron */
+/* Global overrides for Electron */
 html, body {
   margin: 0;
   padding: 0;

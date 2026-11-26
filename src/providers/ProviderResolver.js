@@ -1,16 +1,16 @@
 /**
- * Basis für ProviderResolver.
+ * Base for ProviderResolver.
  *
- * Ein ProviderResolver bekommt eine Hoster-/Streaming-URL (in der Regel vom
- * SiteResolver gefunden) und liefert genau ein normalisiertes Ergebnis:
+ * A ProviderResolver gets a host/streaming URL (usually found by the
+ * SiteResolver) and returns exactly one normalized result:
  *
  *   { sourceUrl, mediaUrl, title?, formats?, provider, requiresAuth? }
  *
- * Regeln:
- * - keine Zugangsdaten im Resolver speichern, Auth kommt aus dem Context,
- * - fehlende Berechtigung wird als AUTH_REQUIRED/SESSION_EXPIRED gemeldet,
- *   nicht als allgemeiner Fehler,
- * - kein Umgehen von Zugriffsschutz und keine DRM-Entschlüsselung.
+ * Rules:
+ * - do not store credentials in the resolver, auth comes from the context,
+ * - missing permission is reported as AUTH_REQUIRED/SESSION_EXPIRED,
+ *   not as a general error,
+ * - no circumvention of access protection and no DRM decryption.
  */
 
 const { isHttpUrl } = require("../core/types");
@@ -20,7 +20,7 @@ class ProviderResolver {
    * @param {{ name: string, priority?: number }} options
    */
   constructor(options = {}) {
-    if (!options.name) throw new TypeError("ProviderResolver: name fehlt.");
+    if (!options.name) throw new TypeError("ProviderResolver: name missing.");
     this.name = options.name;
     this.priority = Number.isFinite(options.priority) ? options.priority : 50;
   }
@@ -39,7 +39,7 @@ class ProviderResolver {
    * @returns {Promise<Object>} ResolvedMedia
    */
   async resolve(_url, _context) {
-    throw new Error(`ProviderResolver "${this.name}": resolve() ist nicht implementiert.`);
+    throw new Error(`ProviderResolver "${this.name}": resolve() is not implemented.`);
   }
 }
 

@@ -1,8 +1,8 @@
 /**
- * Syntaxprüfung für alle CommonJS-Dateien unter src/ und tests/.
+ * Syntax check for all CommonJS files under src/, tests/ and scripts/.
  *
- * src/renderer.js bleibt außen vor: die Datei enthält JSX und wird vorab
- * von scripts/build-renderer.js (esbuild) übersetzt, `node --check` kann sie nicht lesen.
+ * src/renderer.js is left out: the file contains JSX and is precompiled
+ * by scripts/build-renderer.js (esbuild); `node --check` cannot read it.
  */
 
 const { execFileSync } = require("node:child_process");
@@ -10,36 +10,36 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const AUSGENOMMEN = new Set([path.join("src", "renderer.js")]);
+const EXCLUDED = new Set([path.join("src", "renderer.js")]);
 
-const sammle = (dir, treffer = []) => {
-  for (const eintrag of fs.readdirSync(dir, { withFileTypes: true })) {
-    const voll = path.join(dir, eintrag.name);
-    if (eintrag.isDirectory()) {
-      if (eintrag.name === "node_modules") continue;
-      sammle(voll, treffer);
-    } else if (eintrag.name.endsWith(".js")) {
-      treffer.push(voll);
+const collect = (dir, matches = []) => {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === "node_modules") continue;
+      collect(full, matches);
+    } else if (entry.name.endsWith(".js")) {
+      matches.push(full);
     }
   }
-  return treffer;
+  return matches;
 };
 
-const dateien = [
-  ...sammle(path.join(root, "src")),
-  ...sammle(path.join(root, "tests")),
-  ...sammle(path.join(root, "scripts"))
-].filter((datei) => !AUSGENOMMEN.has(path.relative(root, datei)));
+const files = [
+  ...collect(path.join(root, "src")),
+  ...collect(path.join(root, "tests")),
+  ...collect(path.join(root, "scripts"))
+].filter((file) => !EXCLUDED.has(path.relative(root, file)));
 
-let fehler = 0;
-for (const datei of dateien) {
+let failures = 0;
+for (const file of files) {
   try {
-    execFileSync(process.execPath, ["--check", datei], { stdio: ["ignore", "ignore", "pipe"] });
+    execFileSync(process.execPath, ["--check", file], { stdio: ["ignore", "ignore", "pipe"] });
   } catch (err) {
-    fehler++;
-    process.stderr.write(`FEHLER ${path.relative(root, datei)}\n${err.stderr ? err.stderr.toString() : err.message}\n`);
+    failures++;
+    process.stderr.write(`ERROR${path.relative(root, file)}\n${err.stderr ? err.stderr.toString() : err.message}\n`);
   }
 }
 
-console.log(`${dateien.length - fehler}/${dateien.length} Dateien syntaktisch in Ordnung.`);
-process.exit(fehler ? 1 : 0);
+console.log(`${files.length - failures}/${files.length} files pass the syntax check.`);
+process.exit(failures ? 1 : 0);

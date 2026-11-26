@@ -1,17 +1,17 @@
 /**
- * FallbackManager: generische Pipeline aus nacheinander versuchten Stufen.
+ * FallbackManager: generic pipeline of stages that are tried one after another.
  *
- * Verallgemeinert die bestehende Kaskade der App
- *   (Impersonation -> Age-Gate-Bypass -> ohne Impersonation ->
+ * Generalizes the app's existing cascade
+ *   (impersonation -> age-gate bypass -> without impersonation ->
  *    Generic-Extractor -> Playwright -> Fehler)
- * zu einem wiederverwendbaren Ablauf, den auch der ResolverManager nutzt.
+ * into a reusable flow that the ResolverManager also uses.
  *
- * Eigenschaften:
- * - jede Stufe ist isoliert: ein Fehler beendet nicht die Pipeline,
- * - Stufen können per skip() übersprungen werden (Bedingung + Begründung),
- * - Fehler werden strukturiert gesammelt (ResolveError mit Code),
- * - terminale Fehler (Abbruch) stoppen sofort,
- * - jeder Schritt wird geloggt.
+ * Properties:
+ * - every stage is isolated: an error does not end the pipeline,
+ * - stages can be skipped via skip() (condition + reason),
+ * - errors are collected in a structured way (ResolveError with code),
+ * - terminal errors (cancellation) stop immediately,
+ * - every step is logged.
  */
 
 const { toResolveError, pickMostRelevantError, TERMINAL_CODES } = require("./errors");
@@ -20,9 +20,9 @@ const { STEP, nullLogger } = require("./logger");
 /**
  * @typedef {Object} FallbackStage
  * @property {string} name
- * @property {(state: Object) => (boolean|string)} [skip] true/Begründung = überspringen
- * @property {(state: Object) => Promise<any>} run       Ergebnis oder Wurf
- * @property {(value: any) => boolean} [accept]          Ergebnis gültig? (Default: != null)
+ * @property {(state: Object) => (boolean|string)} [skip] true/reason = skip
+ * @property {(state: Object) => Promise<any>} run       Result or throw
+ * @property {(value: any) => boolean} [accept]          Is the result valid? (default: != null)
  */
 
 class FallbackManager {
@@ -35,10 +35,10 @@ class FallbackManager {
   }
 
   /**
-   * Führt die Stufen der Reihe nach aus, bis eine ein gültiges Ergebnis liefert.
+   * Runs the stages in order until one delivers a valid result.
    *
    * @param {FallbackStage[]} stages
-   * @param {Object} [state] Gemeinsamer, veränderbarer Zustand aller Stufen
+   * @param {Object} [state] Shared, mutable state of all stages
    * @returns {Promise<{ok: boolean, value?: any, stage?: string, error?: Object, attempts: Array}>}
    */
   async run(stages, state = {}) {
@@ -50,9 +50,9 @@ class FallbackManager {
 
       const skip = typeof stage.skip === "function" ? stage.skip(state) : false;
       if (skip) {
-        const reason = typeof skip === "string" ? skip : "Bedingung nicht erfüllt";
+        const reason = typeof skip === "string" ? skip : "condition not met";
         attempts.push({ stage: stage.name, skipped: true, reason });
-        this.logger.step(STEP.FALLBACK, { resolver: stage.name, message: `übersprungen: ${reason}` });
+        this.logger.step(STEP.FALLBACK, { resolver: stage.name, message: `skipped: ${reason}` });
         continue;
       }
 

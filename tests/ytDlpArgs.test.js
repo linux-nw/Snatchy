@@ -17,13 +17,13 @@ const basis = {
   playlistMode: "single-video"
 };
 
-/** Wert des Arguments nach dem Schalter, oder undefined. */
+/** Value of the argument after the flag, or undefined. */
 const valueOf = (args, flag) => {
   const i = args.indexOf(flag);
   return i === -1 ? undefined : args[i + 1];
 };
 
-test("MP4: Formatkette mit Höhenlimit und Fallbacks", () => {
+test("MP4: format chain with height limit and fallbacks", () => {
   const args = buildYtDlpArgs({ ...basis, format: "mp4", quality: "1080" });
   assert.equal(
     valueOf(args, "--format"),
@@ -34,16 +34,16 @@ test("MP4: Formatkette mit Höhenlimit und Fallbacks", () => {
   assert.ok(args.includes("--embed-metadata"));
   assert.ok(args.includes("--embed-chapters"));
   assert.ok(args.includes("--no-playlist"));
-  assert.equal(args[args.length - 1], basis.url, "die URL steht immer am Ende");
-  assert.equal(args[args.length - 2], "--", "vor der URL steht --, damit sie nie als Option gelesen wird");
+  assert.equal(args[args.length - 1], basis.url, "the URL is always at the end");
+  assert.equal(args[args.length - 2], "--", "-- precedes the URL so it is never read as an option");
 });
 
-test("MP4 ohne Qualitätswunsch nimmt das beste Format", () => {
+test("MP4 without a quality request takes the best format", () => {
   const args = buildYtDlpArgs({ ...basis, format: "mp4", quality: "best" });
   assert.equal(valueOf(args, "--format"), "bestvideo*+bestaudio/best");
 });
 
-test("MP3: Audioextraktion mit Qualität", () => {
+test("MP3: audio extraction with quality", () => {
   const args = buildYtDlpArgs({ ...basis, format: "mp3", audioQuality: "5" });
   assert.equal(valueOf(args, "--format"), "bestaudio/best");
   assert.ok(args.includes("--extract-audio"));
@@ -52,19 +52,19 @@ test("MP3: Audioextraktion mit Qualität", () => {
   assert.ok(!args.includes("--merge-output-format"));
 });
 
-test("audio-raw lädt Audio ohne Reencode (Whisper-Vorbereitung)", () => {
+test("audio-raw downloads audio without re-encode (Whisper preparation)", () => {
   const args = buildYtDlpArgs({ ...basis, format: "audio-raw" });
   assert.equal(valueOf(args, "--format"), "bestaudio/best");
   assert.ok(!args.includes("--extract-audio"));
 });
 
-test("Cover-Art wird nur auf Wunsch eingebettet", () => {
+test("cover art is only embedded on request", () => {
   assert.ok(!buildYtDlpArgs({ ...basis, format: "mp3" }).includes("--embed-thumbnail"));
   assert.ok(buildYtDlpArgs({ ...basis, format: "mp3", embedCoverArt: true }).includes("--embed-thumbnail"));
   assert.ok(buildYtDlpArgs({ ...basis, format: "mp4", embedCoverArt: true }).includes("--embed-thumbnail"));
 });
 
-test("Playlist-Modi setzen die passenden Schalter", () => {
+test("playlist modes set the matching flags", () => {
   assert.ok(buildYtDlpArgs({ ...basis, format: "mp4" }).includes("--no-playlist"));
   const kombiniert = buildYtDlpArgs({ ...basis, format: "mp4", playlistMode: "playlist-combined" });
   assert.ok(kombiniert.includes("--yes-playlist"));
@@ -74,7 +74,7 @@ test("Playlist-Modi setzen die passenden Schalter", () => {
   assert.ok(!einzeln.includes("--concat-playlist"));
 });
 
-test("Impersonation und Browser-Cookies sind optional", () => {
+test("impersonation and browser cookies are optional", () => {
   const ohne = buildYtDlpArgs({ ...basis, format: "mp4", cookiesBrowser: "none" });
   assert.ok(!ohne.includes("--impersonate"));
   assert.ok(!ohne.includes("--cookies-from-browser"));
@@ -84,7 +84,7 @@ test("Impersonation und Browser-Cookies sind optional", () => {
   assert.equal(valueOf(mit, "--cookies-from-browser"), "firefox");
 });
 
-test("Age-Gate-Bypass gibt es nur für YouTube", () => {
+test("age-gate bypass exists only for YouTube", () => {
   assert.deepEqual(
     getAgeGateExtraArgs("https://www.youtube.com/watch?v=abc"),
     ["--extractor-args", "youtube:skip=age_gate"]
@@ -93,7 +93,7 @@ test("Age-Gate-Bypass gibt es nur für YouTube", () => {
   assert.equal(getAgeGateExtraArgs("https://example.com/video"), null);
 });
 
-test("Untertitel-Argumente bleiben unverändert", () => {
+test("subtitle arguments stay unchanged", () => {
   const args = buildSubtitleArgs({
     url: basis.url,
     subLangs: "de.*",
@@ -111,7 +111,7 @@ test("Untertitel-Argumente bleiben unverändert", () => {
   assert.equal(args[args.length - 2], "--");
 });
 
-test("Metadaten-Abruf nutzt --print", () => {
+test("metadata fetch uses --print", () => {
   const args = buildPrintArgs({ field: "%(thumbnail)s", url: basis.url, impersonate: true, cookiesBrowser: "edge" });
   assert.deepEqual(args.slice(0, 4), ["--skip-download", "--no-playlist", "--print", "%(thumbnail)s"]);
   assert.equal(valueOf(args, "--impersonate"), "chrome");
@@ -120,7 +120,7 @@ test("Metadaten-Abruf nutzt --print", () => {
   assert.equal(args[args.length - 2], "--");
 });
 
-test("Eingaben werden auf erlaubte Werte begrenzt", () => {
+test("inputs are limited to allowed values", () => {
   assert.equal(normalizeEncoding("cp1252"), "cp1252");
   assert.equal(normalizeEncoding("quatsch"), "utf-8");
   assert.equal(normalizeEncoding("system"), "system");
@@ -130,10 +130,10 @@ test("Eingaben werden auf erlaubte Werte begrenzt", () => {
   assert.equal(ALLOWED_BROWSERS.has("netscape"), false);
 });
 
-test("ytsearch-Eingabe steht hinter -- und nie als Option", () => {
+test("ytsearch input comes after -- and never as an option", () => {
   const eingabe = "ytsearch5:katzen videos";
   const args = buildYtDlpArgs({ ...basis, url: eingabe });
   assert.equal(args[args.length - 1], eingabe);
   assert.equal(args[args.length - 2], "--");
-  assert.equal(args.filter((a) => a === "--").length, 1, "genau ein --");
+  assert.equal(args.filter((a) => a === "--").length, 1, "exactly one --");
 });

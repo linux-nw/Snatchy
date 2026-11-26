@@ -7,7 +7,7 @@ const { createLogger } = require("../src/core/logger");
 
 const failingStage = (name, error) => ({ name, run: async () => { throw error; } });
 
-test("die erste erfolgreiche Stufe gewinnt, spätere laufen nicht mehr", async () => {
+test("the first successful stage wins, later ones no longer run", async () => {
   const calls = [];
   const fallback = new FallbackManager();
   const result = await fallback.run([
@@ -22,7 +22,7 @@ test("die erste erfolgreiche Stufe gewinnt, spätere laufen nicht mehr", async (
   assert.deepEqual(calls, ["primary", "secondary"]);
 });
 
-test("scheitern alle Stufen, kommt der aussagekräftigste Fehler zurück", async () => {
+test("if all stages fail, the most meaningful error is returned", async () => {
   const fallback = new FallbackManager();
   const result = await fallback.run([
     failingStage("primary", new ResolveError(ResolveErrorCode.UNSUPPORTED_URL, "kein Extractor")),
@@ -40,19 +40,19 @@ test("scheitern alle Stufen, kommt der aussagekräftigste Fehler zurück", async
   ]);
 });
 
-test("übersprungene Stufen werden mit Begründung protokolliert", async () => {
+test("skipped stages are logged with a reason", async () => {
   const fallback = new FallbackManager();
   const result = await fallback.run([
-    { name: "age-gate", skip: () => "kein Age-Gate-Bypass bekannt", run: async () => "nie" },
+    { name: "age-gate", skip: () => "no age-gate bypass known", run: async () => "nie" },
     { name: "generic", run: async () => "ok" }
   ]);
 
   assert.equal(result.value, "ok");
   assert.equal(result.attempts[0].skipped, true);
-  assert.equal(result.attempts[0].reason, "kein Age-Gate-Bypass bekannt");
+  assert.equal(result.attempts[0].reason, "no age-gate bypass known");
 });
 
-test("ein Abbruch stoppt die Pipeline sofort", async () => {
+test("a cancellation stops the pipeline immediately", async () => {
   const calls = [];
   const fallback = new FallbackManager();
   const result = await fallback.run([
@@ -65,7 +65,7 @@ test("ein Abbruch stoppt die Pipeline sofort", async () => {
   assert.deepEqual(calls, ["primary"]);
 });
 
-test("stopOn beendet die Pipeline nach Wunsch des Aufrufers", async () => {
+test("stopOn ends the pipeline as requested by the caller", async () => {
   const calls = [];
   const fallback = new FallbackManager({
     stopOn: (error) => error.code === ResolveErrorCode.AUTH_REQUIRED
@@ -79,7 +79,7 @@ test("stopOn beendet die Pipeline nach Wunsch des Aufrufers", async () => {
   assert.deepEqual(calls, []);
 });
 
-test("ein leeres Ergebnis gilt als Fehlschlag", async () => {
+test("an empty result counts as a failure", async () => {
   const fallback = new FallbackManager();
   const result = await fallback.run([
     { name: "leer", run: async () => null },
@@ -88,7 +88,7 @@ test("ein leeres Ergebnis gilt als Fehlschlag", async () => {
   assert.equal(result.stage, "voll");
 });
 
-test("die Stufen teilen sich einen Zustand", async () => {
+test("the stages share a state", async () => {
   const fallback = new FallbackManager();
   const result = await fallback.run([
     { name: "eins", run: async (state) => { state.kandidat = "yt-dlp"; throw new Error("Unsupported URL"); } },
@@ -97,7 +97,7 @@ test("die Stufen teilen sich einen Zustand", async () => {
   assert.equal(result.value, "yt-dlp");
 });
 
-test("jeder Schritt wird strukturiert geloggt", async () => {
+test("every step is logged in a structured way", async () => {
   const lines = [];
   const logger = createLogger({ sink: (line) => lines.push(line) });
   const fallback = new FallbackManager({ logger });

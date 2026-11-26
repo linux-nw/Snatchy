@@ -1,10 +1,10 @@
 /**
- * Strukturierte Resolver-Fehler.
+ * Structured resolver errors.
  *
- * Bisher landete jeder Fehlschlag als freie Textzeile in der UI ("failed").
- * Mit einem Fehlercode kann die Pipeline entscheiden, ob ein Fallback
- * überhaupt Sinn ergibt (z. B. AUTH_REQUIRED: ein zweiter Versuch ohne
- * Cookies bringt nichts) und die UI kann gezielt helfen.
+ * Previously every failure ended up as a free-text line in the UI ("failed").
+ * With an error code the pipeline can decide whether a fallback makes
+ * any sense at all (e.g. AUTH_REQUIRED: a second attempt without
+ * cookies gains nothing) and the UI can offer targeted help.
  */
 
 const ResolveErrorCode = {
@@ -16,15 +16,15 @@ const ResolveErrorCode = {
   PROVIDER_ERROR: "PROVIDER_ERROR",
   EXTRACTION_FAILED: "EXTRACTION_FAILED",
   NETWORK_ERROR: "NETWORK_ERROR",
-  // Ergänzungen für die vorhandenen Abläufe dieses Projekts:
-  DEPENDENCY_MISSING: "DEPENDENCY_MISSING", // yt-dlp/ffmpeg/Playwright fehlt (ENOENT)
-  CANCELLED: "CANCELLED"                    // Nutzer hat abgebrochen
+  // Additions for the existing flows of this project:
+  DEPENDENCY_MISSING: "DEPENDENCY_MISSING", // yt-dlp/ffmpeg/Playwright missing (ENOENT)
+  CANCELLED: "CANCELLED"                    // User cancelled
 };
 
 /**
- * Reihenfolge für die Aggregation mehrerer Fehlversuche: Was weiter oben
- * steht, ist die für den Nutzer nützlichere Aussage. "Login nötig" hilft
- * mehr als das generische "Extraktion fehlgeschlagen" eines Zweitresolvers.
+ * Order for aggregating several failed attempts: whatever comes first
+ * is the more useful statement for the user. "Login required" helps
+ * more than the generic "extraction failed" of a second resolver.
  */
 const ERROR_PRIORITY = [
   ResolveErrorCode.CANCELLED,
@@ -40,9 +40,9 @@ const ERROR_PRIORITY = [
 ];
 
 /**
- * Fehlercodes, bei denen weitere Resolver/Fallback-Stufen nichts bringen:
- * abgebrochen ist abgebrochen, und ohne Login/Captcha ändert eine andere
- * Extraktionsmethode nichts an der fehlenden Berechtigung.
+ * Error codes for which further resolver/fallback stages gain nothing:
+ * cancelled is cancelled, and without login/captcha a different
+ * extraction method does not change the missing permission.
  */
 const TERMINAL_CODES = new Set([
   ResolveErrorCode.CANCELLED
@@ -50,8 +50,8 @@ const TERMINAL_CODES = new Set([
 
 class ResolveError extends Error {
   /**
-   * @param {string} code    Wert aus ResolveErrorCode
-   * @param {string} message Menschenlesbare Meldung (ohne Secrets!)
+   * @param {string} code    Value from ResolveErrorCode
+   * @param {string} message Human-readable message (no secrets!)
    * @param {{ resolver?: string, url?: string, cause?: any, details?: Object, retryable?: boolean }} [options]
    */
   constructor(code, message, options = {}) {
@@ -67,7 +67,7 @@ class ResolveError extends Error {
       : !TERMINAL_CODES.has(this.code);
   }
 
-  /** Kompakte, log-sichere Darstellung (enthält nur Code, Resolver, Meldung). */
+  /** Compact, log-safe representation (contains only code, resolver, message). */
   toLogObject() {
     return {
       code: this.code,
@@ -78,21 +78,21 @@ class ResolveError extends Error {
 }
 
 /**
- * Heuristik aus der bestehenden main.js: Sieht die Meldung nach einem
- * Zugriffs-/Anti-Bot-Block aus (403/410/429/451, Cloudflare ...)? Dann lohnt
- * ein Wiederholungsversuch mit Browser-Impersonation, seitenübergreifend.
- * Bewusst unverändert übernommen, damit die bestehenden Tipps gleich bleiben.
+ * Heuristic from the existing main.js: does the message look like an
+ * access/anti-bot block (403/410/429/451, Cloudflare ...)? If so, a retry
+ * with browser impersonation is worthwhile, across sites.
+ * Deliberately carried over unchanged so the existing tips stay the same.
  * @param {string} msg
  */
 const looksLikeBlock = (msg) => !!msg && /HTTP Error (4|5)\d\d|\b4(0[39]|10|29|51)\b|forbidden|blocked|cloudflare|captcha|Unable to download webpage|TLS|SSL|Got error/i.test(msg);
 
-/** yt-dlp meldet "Unsupported URL", wenn kein Extractor greift. */
+/** yt-dlp reports "Unsupported URL" when no extractor matches. */
 const isUnsupportedUrl = (msg) => !!msg && /unsupported url/i.test(msg);
 
 /**
- * Ordnet eine rohe Fehlermeldung (yt-dlp-Zeile, fetch-Fehler ...) einem
- * strukturierten Code zu. Reihenfolge der Prüfungen ist wichtig: die
- * spezifischeren Fälle zuerst, der generische Block-Fall zuletzt.
+ * Maps a raw error message (yt-dlp line, fetch error ...) to a
+ * structured code. The order of the checks matters: the more
+ * specific cases first, the generic block case last.
  * @param {string} msg
  * @returns {string} ResolveErrorCode
  */
@@ -102,8 +102,8 @@ const classifyMessage = (msg) => {
 
   if (/\babort(ed)?\b|abgebrochen|cancell?ed/i.test(text)) return ResolveErrorCode.CANCELLED;
 
-  // Captcha/Bot-Check vor Auth prüfen: "Sign in to confirm you're not a bot"
-  // enthält beide Signalwörter, ist aber ein Bot-Check.
+  // Check captcha/bot check before auth: "Sign in to confirm you're not a bot"
+  // contains both signal words, but is a bot check.
   if (/captcha|not a bot|recaptcha|hcaptcha|challenge required/i.test(text)) {
     return ResolveErrorCode.CAPTCHA_REQUIRED;
   }
@@ -131,8 +131,8 @@ const classifyMessage = (msg) => {
 };
 
 /**
- * Macht aus einem beliebigen geworfenen Wert einen ResolveError.
- * Bereits strukturierte Fehler bleiben unverändert (inkl. ihres Codes).
+ * Turns any thrown value into a ResolveError.
+ * Already structured errors stay unchanged (including their code).
  * @param {any} err
  * @param {{ resolver?: string, url?: string, code?: string }} [options]
  * @returns {ResolveError}
@@ -144,7 +144,7 @@ const toResolveError = (err, options = {}) => {
     return err;
   }
   const message = err && err.message ? err.message : String(err || "Unbekannter Fehler");
-  // Node-Fehlercodes (ENOENT, ECONNRESET ...) fließen in die Klassifikation ein.
+  // Node error codes (ENOENT, ECONNRESET ...) feed into the classification.
   const nodeCode = err && typeof err.code === "string" ? err.code : "";
   const code = options.code
     || (ResolveErrorCode[nodeCode] ? nodeCode : classifyMessage(`${nodeCode} ${message}`));
@@ -156,7 +156,7 @@ const toResolveError = (err, options = {}) => {
 };
 
 /**
- * Wählt aus mehreren Fehlversuchen den aussagekräftigsten Fehler.
+ * Picks the most meaningful error from several failed attempts.
  * @param {ResolveError[]} errors
  * @returns {ResolveError|null}
  */
@@ -175,11 +175,11 @@ const pickMostRelevantError = (errors) => {
   return best;
 };
 
-/** Praktisch für Resolver: "ich könnte, aber nur mit Login". */
+/** Convenience for resolvers: "I could, but only with login". */
 const authRequired = (message, options = {}) =>
   new ResolveError(ResolveErrorCode.AUTH_REQUIRED, message, options);
 
-/** Praktisch für Resolver: "diese URL ist nicht meine Baustelle". */
+/** Convenience for resolvers: "this URL is not my concern". */
 const unsupported = (message, options = {}) =>
   new ResolveError(ResolveErrorCode.UNSUPPORTED_URL, message, options);
 

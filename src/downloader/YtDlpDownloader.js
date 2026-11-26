@@ -1,18 +1,18 @@
 /**
- * Download-Kaskade.
+ * Download cascade.
  *
- * Dieselben fünf Stufen wie bisher, nur als FallbackManager-Pipeline statt
- * als verschachtelte if/try-Blöcke. Die Log-Ausgaben in der App bleiben Wort
- * für Wort gleich.
+ * The same five stages as before, only as a FallbackManager pipeline instead
+ * of nested if/try blocks. The log output in the app stays word
+ * for word the same.
  *
- *   1. yt-dlp-Kandidaten durchprobieren (mit Impersonation, falls verfügbar)
- *   2. Age-Gate-Bypass (nur wo bekannt)
- *   3. ohne Impersonation
- *   4. Generic-Extractor erzwingen (nur bei "Unsupported URL")
- *   5. Browser-/Session-basierte Extraktion (nur wenn aktiviert)
+ *   1. try yt-dlp candidates (with impersonation, if available)
+ *   2. age-gate bypass (only where known)
+ *   3. without impersonation
+ *   4. force the generic extractor (only on "Unsupported URL")
+ *   5. browser/session-based extraction (only if enabled)
  *
- * Die Schicht kennt ausschließlich ResolvedMedia und die Nutzeroptionen,
- * nicht die konkreten Provider.
+ * The layer only knows ResolvedMedia and the user options,
+ * not the concrete providers.
  */
 
 const { FallbackManager } = require("../core/FallbackManager");
@@ -22,12 +22,12 @@ const { isUnsupportedUrl, looksLikeBlock } = require("../core/errors");
 const { getAgeGateExtraArgs } = require("./ytDlpArgs");
 
 /**
- * Schreibt jeden Fehler in die Historie des Pipeline-Zustands.
+ * Writes every error into the history of the pipeline state.
  *
- * Bewusst die ganze Historie und nicht nur der letzte Fehler: eine Stufe kann
- * mit einer anderen Meldung scheitern als die davor. Würden die späteren
- * Stufen nur den letzten Fehler ansehen, blieben sie liegen, obwohl sie noch
- * an der Reihe wären.
+ * Deliberately the whole history and not just the last error: a stage can
+ * fail with a different message than the one before. If the later
+ * stages only looked at the last error, they would be left out although
+ * it would still be their turn.
  */
 const track = (state, fn) => async () => {
   try {
@@ -41,22 +41,22 @@ const track = (state, fn) => async () => {
 
 const messageOf = (error) => (error && error.message) ? error.message : "";
 
-/** Deutete irgendein bisheriger Fehler auf einen fehlenden Extractor hin? */
-const sahUnsupportedUrl = (state) => state.errors.some((err) => isUnsupportedUrl(messageOf(err)));
+/** Did any earlier error point to a missing extractor? */
+const sawUnsupportedUrl = (state) => state.errors.some((err) => isUnsupportedUrl(messageOf(err)));
 
 /**
- * Führt den Download für ein aufgelöstes Medium aus.
+ * Runs the download for a resolved medium.
  *
  * @param {Object} params
  * @param {Object} params.media        ResolvedMedia
- * @param {Object} params.options      Normalisierte Nutzeroptionen (Format, Qualität ...)
+ * @param {Object} params.options      Normalized user options (format, quality ...)
  * @param {Object} params.deps         { impersonateAvailable, ffmpegAvailable, ... }
- * @param {Array}  params.candidates   yt-dlp-Kandidaten [{command, argsPrefix}]
+ * @param {Array}  params.candidates   yt-dlp candidates [{command, argsPrefix}]
  * @param {(candidate: Object, options: Object, runOpts: Object) => Promise<string|null>} params.runDownload
  * @param {(url: string) => Promise<Object|null>} [params.resolveStream] Stufe 5
- * @param {() => boolean} [params.isCancelled] Hat der Nutzer abgebrochen?
- * @param {(line: string) => void} [params.log] Ausgabe in die App
- * @param {Object} [params.logger]     Strukturierter Logger
+ * @param {() => boolean} [params.isCancelled] Did the user cancel?
+ * @param {(line: string) => void} [params.log] Output to the app
+ * @param {Object} [params.logger]     Structured logger
  * @returns {Promise<{ok: boolean, filePath?: string|null, candidate?: Object, error?: Error, stage?: string}>}
  */
 const runDownloadCascade = async ({
@@ -73,14 +73,14 @@ const runDownloadCascade = async ({
   const downloadUrl = downloadUrlOf(media);
   const downloadOptions = { ...options, url: downloadUrl };
   const state = { workingCandidate: null, lastError: null, errors: [] };
-  const abgebrochen = typeof isCancelled === "function" ? isCancelled : () => false;
+  const cancelled = typeof isCancelled === "function" ? isCancelled : () => false;
 
-  // Gründe, die jede Folgestufe betreffen. Nach einem Abbruch darf keine
-  // weitere Stufe mehr starten, sonst lädt die App nach dem Klick auf
-  // "Abbrechen" munter weiter.
-  const gemeinsamerSkip = (s) => {
-    if (abgebrochen()) return "Vorgang abgebrochen";
-    if (!s.workingCandidate) return "kein lauffähiges yt-dlp";
+  // Reasons that affect every following stage. After a cancellation no
+  // further stage may start, otherwise the app keeps downloading after the
+  // click on "Cancel".
+  const sharedSkip = (s) => {
+    if (cancelled()) return "cancelled";
+    if (!s.workingCandidate) return "no working yt-dlp";
     return false;
   };
 
@@ -90,7 +90,7 @@ const runDownloadCascade = async ({
       run: track(state, async (s) => {
         let lastError;
         for (const candidate of candidates) {
-          if (abgebrochen()) break;
+          if (cancelled()) break;
           log(`[Stufe 1/5] Starte mit ${candidate.command}${candidate.argsPrefix.length ? ` ${candidate.argsPrefix.join(" ")}` : ""}${deps.impersonateAvailable ? " (Impersonation: chrome)" : ""}`);
           try {
             const filePath = await runDownload(candidate, downloadOptions, { impersonate: deps.impersonateAvailable });
@@ -98,22 +98,22 @@ const runDownloadCascade = async ({
           } catch (error) {
             lastError = error;
             if (error.code !== "ENOENT") {
-              // Kandidat läuft, der Fehler kommt von der Seite: nicht weiter
-              // nach anderen yt-dlp-Installationen suchen.
+              // Candidate runs, the error comes from the site: do not keep
+              // looking for other yt-dlp installations.
               s.workingCandidate = candidate;
               throw error;
             }
             log(error.message);
           }
         }
-        throw lastError || new Error("Kein yt-dlp-Kandidat verfügbar.");
+        throw lastError || new Error("No yt-dlp candidate available.");
       })
     },
     {
       name: "age-gate",
-      skip: (s) => gemeinsamerSkip(s)
-        || (!deps.impersonateAvailable && "Impersonation nicht verfügbar")
-        || (!getAgeGateExtraArgs(downloadUrl) && "kein Age-Gate-Bypass für diese Seite bekannt"),
+      skip: (s) => sharedSkip(s)
+        || (!deps.impersonateAvailable && "impersonation not available")
+        || (!getAgeGateExtraArgs(downloadUrl) && "no age-gate bypass known for this site"),
       run: track(state, async (s) => {
         log("[Stufe 2/5] Erneuter Versuch mit Age-Gate-Bypass …");
         const filePath = await runDownload(s.workingCandidate, downloadOptions, {
@@ -125,8 +125,8 @@ const runDownloadCascade = async ({
     },
     {
       name: "ohne-impersonation",
-      skip: (s) => gemeinsamerSkip(s)
-        || (!deps.impersonateAvailable && "es lief ohnehin ohne Impersonation"),
+      skip: (s) => sharedSkip(s)
+        || (!deps.impersonateAvailable && "it ran without impersonation anyway"),
       run: track(state, async (s) => {
         log("[Stufe 3/5] Fallback: Versuch ohne Browser-Impersonation …");
         const filePath = await runDownload(s.workingCandidate, downloadOptions, { impersonate: false });
@@ -135,8 +135,8 @@ const runDownloadCascade = async ({
     },
     {
       name: "generic-extractor",
-      skip: (s) => gemeinsamerSkip(s)
-        || (!sahUnsupportedUrl(s) && "kein Fehler deutet auf einen fehlenden Extractor"),
+      skip: (s) => sharedSkip(s)
+        || (!sawUnsupportedUrl(s) && "no error points to a missing extractor"),
       run: track(state, async (s) => {
         log("[Stufe 4/5] Kein Extractor – Versuch mit Generic-Extractor …");
         const filePath = await runDownload(s.workingCandidate, downloadOptions, {
@@ -148,10 +148,10 @@ const runDownloadCascade = async ({
     },
     {
       name: "browser-session",
-      skip: (s) => gemeinsamerSkip(s)
-        || (typeof resolveStream !== "function" && "keine Browser-Extraktion verfügbar")
-        || (!options.playwrightFallback && "Playwright-Fallback nicht aktiviert")
-        || (!sahUnsupportedUrl(s) && "kein Fehler deutet auf einen fehlenden Extractor"),
+      skip: (s) => sharedSkip(s)
+        || (typeof resolveStream !== "function" && "no browser extraction available")
+        || (!options.playwrightFallback && "Playwright fallback not enabled")
+        || (!sawUnsupportedUrl(s) && "no error points to a missing extractor"),
       run: track(state, async (s) => {
         log("[Stufe 5/5] Playwright-Fallback: headless Browser analysiert Seite …");
         const streamMedia = await resolveStream(downloadUrl);
@@ -168,9 +168,9 @@ const runDownloadCascade = async ({
     }
   ];
 
-  // stopOn greift zusätzlich zu den skip-Bedingungen: bricht der Nutzer
-  // mitten in einer laufenden Stufe ab, endet die Kaskade sofort.
-  const fallback = new FallbackManager({ logger, stopOn: () => abgebrochen() });
+  // stopOn applies in addition to the skip conditions: if the user cancels
+  // in the middle of a running stage, the cascade ends immediately.
+  const fallback = new FallbackManager({ logger, stopOn: () => cancelled() });
   const result = await fallback.run(stages, state);
 
   if (result.ok) {
@@ -185,16 +185,16 @@ const runDownloadCascade = async ({
 
   return {
     ok: false,
-    // state.lastError ist der Originalfehler (mit .code wie ENOENT), der für
-    // die Meldung an den Nutzer gebraucht wird.
+    // state.lastError is the original error (with .code such as ENOENT), which is
+    // needed for the message to the user.
     error: state.lastError || result.error,
     attempts: result.attempts
   };
 };
 
 /**
- * Baut die Fehlermeldung für die UI. Unverändert übernommen, nur um die
- * strukturierten Fehler der Browser-Stufe ergänzt.
+ * Builds the error message for the UI. Carried over unchanged, only extended by the
+ * structured errors of the browser stage.
  *
  * @param {Error} lastError
  * @param {{ options: Object, deps: Object }} context
@@ -212,7 +212,7 @@ const buildFailureMessage = (lastError, { options = {}, deps = {} } = {}) => {
   }
   if (code === "PLAYWRIGHT_MISSING" || code === "PLAYWRIGHT_CHROMIUM_MISSING"
     || details.setup === "PLAYWRIGHT_MISSING" || details.setup === "PLAYWRIGHT_CHROMIUM_MISSING") {
-    return lastError.message; // bereits klarer Hinweis aus dem Stream-Finder
+    return lastError.message; // already a clear hint from the stream finder
   }
 
   let message = lastError ? lastError.message : "Unbekannter Download-Fehler.";

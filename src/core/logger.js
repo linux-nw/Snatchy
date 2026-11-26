@@ -1,14 +1,14 @@
 /**
- * Strukturiertes Logging der Auflösungs-Pipeline.
+ * Structured logging of the resolution pipeline.
  *
- * Jeder Schritt (Input -> Site erkannt -> Provider erkannt -> Resolver
- * versucht -> Erfolg/Fehler -> Fallback -> Ergebnis) wird als Objekt geloggt
- * und zusätzlich als eine Zeile formatiert, damit die vorhandene
- * "download:log"-Anzeige der App unverändert weiterbenutzt werden kann.
+ * Every step (input -> site detected -> provider detected -> resolver
+ * tried -> success/error -> fallback -> result) is logged as an object
+ * and additionally formatted as one line, so the app's existing
+ * "download:log" display can keep being used unchanged.
  *
- * Sicherheit: Cookies, Tokens, Passwörter und Authorization-Header werden vor
- * der Ausgabe entfernt bzw. maskiert. Das passiert zentral hier, damit kein
- * einzelner Resolver es vergessen kann.
+ * Security: cookies, tokens, passwords and authorization headers are removed or
+ * masked before output. This happens centrally here so that no
+ * single resolver can forget it.
  */
 
 const STEP = {
@@ -25,25 +25,25 @@ const STEP = {
 
 const REDACTED = "[redacted]";
 
-/** Query-Parameter, die typischerweise Signaturen/Tokens tragen. */
+/** Query parameters that typically carry signatures/tokens. */
 const SENSITIVE_QUERY_PARAMS = [
   "token", "access_token", "auth", "authorization", "sig", "signature",
   "key", "apikey", "api_key", "password", "passwd", "pwd", "session",
   "sessionid", "hash", "policy", "credential", "x-amz-signature"
 ];
 
-/** Header-Namen, deren Werte nie geloggt werden. */
+/** Header names whose values are never logged. */
 const SENSITIVE_HEADERS = new Set([
   "cookie", "set-cookie", "authorization", "proxy-authorization",
   "x-api-key", "x-auth-token", "x-csrf-token"
 ]);
 
-/** Objekt-Schlüssel, die nie im Log auftauchen dürfen. */
+/** Object keys that must never appear in the log. */
 const SENSITIVE_KEYS = /^(cookies?|token|access_?token|refresh_?token|password|passwd|pwd|secret|authorization|auth_?header|session_?id|api_?key|credential)s?$/i;
 
 /**
- * Entfernt Signatur-/Token-Parameter aus einer URL. Ungültige URLs werden
- * unverändert zurückgegeben (dann ist es ohnehin kein Query-String).
+ * Removes signature/token parameters from a URL. Invalid URLs are returned
+ * unchanged (then it is not a query string anyway).
  * @param {string} url
  */
 const redactUrl = (url) => {
@@ -61,7 +61,7 @@ const redactUrl = (url) => {
       touched = true;
     }
   }
-  // Userinfo (https://user:pass@host) ebenfalls entfernen.
+  // Also remove userinfo (https://user:pass@host).
   if (parsed.username || parsed.password) {
     parsed.username = "";
     parsed.password = "";
@@ -71,8 +71,8 @@ const redactUrl = (url) => {
 };
 
 /**
- * Header-Map für die Ausgabe säubern: sensible Werte werden maskiert, die
- * Namen bleiben sichtbar (nützlich zur Fehlersuche, verrät nichts).
+ * Sanitize a header map for output: sensitive values are masked, the
+ * names stay visible (useful for troubleshooting, reveals nothing).
  * @param {Record<string,string>} headers
  */
 const redactHeaders = (headers) => {
@@ -85,7 +85,7 @@ const redactHeaders = (headers) => {
 };
 
 /**
- * Rekursive Säuberung beliebiger Log-Nutzlast.
+ * Recursive sanitizing of any log payload.
  * @param {any} value
  * @param {number} [depth]
  */
@@ -102,7 +102,7 @@ const redact = (value, depth = 0) => {
   const out = {};
   for (const [key, val] of Object.entries(value)) {
     if (SENSITIVE_KEYS.test(key)) {
-      // Menge statt Inhalt: hilft beim Debuggen, ohne etwas preiszugeben.
+      // Count instead of content: helps debugging without revealing anything.
       out[key] = Array.isArray(val) ? `${REDACTED} (${val.length})` : REDACTED;
       continue;
     }
@@ -115,7 +115,7 @@ const redact = (value, depth = 0) => {
   return out;
 };
 
-/** Einzeilige, menschenlesbare Darstellung eines Schritts. */
+/** Single-line, human-readable representation of a step. */
 const formatEntry = (entry) => {
   const parts = [`[resolve] ${entry.step}`];
   if (entry.resolver) parts.push(`resolver=${entry.resolver}`);
@@ -140,7 +140,7 @@ const createLogger = (options = {}) => {
   const entries = [];
 
   /**
-   * @param {string} step  Wert aus STEP
+   * @param {string} step  Value from STEP
    * @param {Object} [data]
    */
   const step = (stepName, data = {}) => {
@@ -152,7 +152,7 @@ const createLogger = (options = {}) => {
       try {
         sink(formatEntry(entry), entry);
       } catch {
-        // Logging darf die Auflösung niemals zum Absturz bringen.
+        // Logging must never crash the resolution.
       }
     }
     return entry;
@@ -161,14 +161,14 @@ const createLogger = (options = {}) => {
   return {
     STEP,
     step,
-    /** Alle bisher gesammelten (bereits gesäuberten) Einträge. */
+    /** All entries collected so far (already sanitized). */
     entries: () => entries.slice(),
-    /** Untergeordneter Logger mit derselben Senke, z. B. pro Kandidat. */
+    /** Child logger with the same sink, e.g. per candidate. */
     child: (childOptions = {}) => createLogger({ sink, enabled, runId, ...childOptions })
   };
 };
 
-/** Logger, der nichts ausgibt, aber Einträge sammelt (Tests, Default). */
+/** Logger that outputs nothing but collects entries (tests, default). */
 const nullLogger = () => createLogger({ enabled: false });
 
 module.exports = {

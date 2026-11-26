@@ -18,8 +18,8 @@
   /* Focus ring */
   --ring-focus: 0 0 0 3px var(--vela-focus);
 
-  /* Accent glow deaktiviert für ein schlichteres, ruhigeres Bild.
-     No-op-Schatten, damit zusammengesetzte box-shadow-Listen gültig bleiben. */
+  /* Accent glow disabled for a plainer, calmer look.
+     No-op shadows so that composed box-shadow lists stay valid. */
   --glow-primary: 0 0 0 0 transparent;
   --glow-secondary: 0 0 0 0 transparent;
 }

@@ -1,16 +1,16 @@
 /**
- * ResolverManager: verdrahtet die Pipeline
+ * ResolverManager: wires up the pipeline
  *
  *   Input URL -> SiteResolver -> Provider-URL(s) -> ProviderResolver
  *             -> ResolvedMedia[] -> Downloader
  *
- * Aufgaben laut Architektur:
- * - passenden Site-/ProviderResolver automatisch finden (über die Registry),
- * - Resolver nach Priorität testen,
- * - Fehler einzelner Resolver isolieren (FallbackManager),
- * - mehrere Kandidaten je Seite unterstützen,
- * - Ergebnisse auf ResolvedMedia normalisieren,
- * - Zwischenergebnisse cachen, solange keine Auth im Spiel ist.
+ * Responsibilities according to the architecture:
+ * - find the matching site/provider resolver automatically (via the registry),
+ * - try resolvers by priority,
+ * - isolate errors of individual resolvers (FallbackManager),
+ * - support several candidates per site,
+ * - normalize results to ResolvedMedia,
+ * - cache intermediate results as long as no auth is involved.
  */
 
 const { ResolverRegistry } = require("./registry");
@@ -27,14 +27,14 @@ const { hasAuth } = require("../auth/AuthContext");
 const { ResolverCache } = require("../cache/ResolverCache");
 
 /**
- * Führt die Referenz aus dem SiteResolver mit dem Provider-Ergebnis zusammen.
- * Titel, Thumbnail und Metadaten der Seite bleiben erhalten, das
- * Provider-Ergebnis gewinnt bei Konflikten. Die Quelle bleibt aber immer die
- * ursprüngliche Seite, nicht die Hoster-URL.
+ * Merges the reference from the SiteResolver with the provider result.
+ * Title, thumbnail and metadata of the page are kept, the
+ * provider result wins on conflicts. The source always stays the
+ * original page, not the host URL.
  *
- * @param {Object} base     Referenz aus dem SiteResolver (kann leer sein)
- * @param {Object} resolved Ergebnis des ProviderResolvers
- * @param {string} url      aufgelöste Provider-URL
+ * @param {Object} base     Reference from the SiteResolver (may be empty)
+ * @param {Object} resolved Result of the ProviderResolver
+ * @param {string} url      resolved provider URL
  */
 const mergeWithBase = (base, resolved, url) => normalizeMedia(
   {
@@ -61,7 +61,7 @@ class ResolverManager {
     this.logger = options.logger || nullLogger();
   }
 
-  /** Kurzform für die Registrierung beim Aufbau der App. */
+  /** Shorthand for registration when the app is set up. */
   registerSite(resolver, options) {
     this.sites.register(resolver, options);
     return this;
@@ -72,7 +72,7 @@ class ResolverManager {
     return this;
   }
 
-  /** Diagnose: was ist registriert, in welcher Reihenfolge wird getestet. */
+  /** Diagnostics: what is registered, in which order it is tested. */
   describe() {
     return { sites: this.sites.describe(), providers: this.providers.describe() };
   }
@@ -81,7 +81,7 @@ class ResolverManager {
     return (context && context.logger) || this.logger;
   }
 
-  /** Cache nur nutzen, wenn kein Auth-Material im Spiel ist. */
+  /** Only use the cache when no auth material is involved. */
   _cacheFor(context) {
     if (!this.cache) return null;
     if (context && hasAuth(context.auth)) return null;
@@ -89,7 +89,7 @@ class ResolverManager {
   }
 
   /**
-   * Schritt 1: Seite erkennen und Provider-Referenzen extrahieren.
+   * Step 1: detect the page and extract provider references.
    *
    * @param {string} url
    * @param {Object} context ResolveContext
@@ -144,11 +144,11 @@ class ResolverManager {
   }
 
   /**
-   * Schritt 2: eine einzelne Provider-/Hoster-URL zu einer Medien-URL auflösen.
+   * Step 2: resolve a single provider/host URL to a media URL.
    *
    * @param {string} url
    * @param {Object} context
-   * @param {{ base?: Object }} [options] base = Referenz aus dem SiteResolver
+   * @param {{ base?: Object }} [options] base = reference from the SiteResolver
    * @returns {Promise<import("./types").ResolvedMedia>}
    */
   async resolveProvider(url, context = {}, options = {}) {
@@ -210,11 +210,11 @@ class ResolverManager {
   }
 
   /**
-   * Komplette Pipeline: URL -> Site -> Provider -> normalisierte Ergebnisse.
+   * Complete pipeline: URL -> site -> provider -> normalized results.
    *
-   * Einzelne Kandidaten dürfen scheitern, ohne den Rest mitzureißen. Erst wenn
-   * kein einziger Kandidat auflösbar ist, wirft die Methode den
-   * aussagekräftigsten Fehler.
+   * Individual candidates may fail without dragging down the rest. Only when
+   * no single candidate can be resolved does the method throw the
+   * most meaningful error.
    *
    * @param {string} url
    * @param {Object} context
@@ -230,8 +230,8 @@ class ResolverManager {
     const errors = [];
     for (const reference of references) {
       if (context.throwIfAborted) context.throwIfAborted();
-      // Hat der SiteResolver bereits eine direkte Medien-URL geliefert, ist
-      // kein Provider-Schritt nötig (z. B. eingebettete Direktdatei).
+      // If the SiteResolver already delivered a direct media URL, no
+      // provider step is needed (e.g. embedded direct file).
       if (reference.mediaUrl) {
         resolved.push(reference);
         continue;
@@ -273,7 +273,7 @@ class ResolverManager {
   }
 
   /**
-   * Bequemlichkeit für den Download: genau ein Ergebnis (das erste).
+   * Convenience for the download: exactly one result (the first).
    * @param {string} url
    * @param {Object} context
    * @returns {Promise<import("./types").ResolvedMedia>}
@@ -297,12 +297,12 @@ class ResolverManager {
   }
 
   /**
-   * Kandidaten aus einer Registry holen, nach Priorität sortiert.
+   * Get candidates from a registry, sorted by priority.
    *
-   * options.only schränkt auf bestimmte Resolver ein. Das braucht die App,
-   * wenn ein bestimmter Ablauf gemeint ist (Podcast-Feed einlesen, gezielt
-   * die Browser-Extraktion anstoßen) und ein Ausweichen auf den generischen
-   * Resolver ein falsches Ergebnis liefern würde.
+   * options.only restricts to specific resolvers. The app needs this
+   * when a specific flow is meant (read podcast feed, trigger the
+   * browser extraction explicitly) and falling back to the generic
+   * resolver would give a wrong result.
    *
    * @param {Object} registry
    * @param {string} url

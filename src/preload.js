@@ -30,5 +30,5 @@ contextBridge.exposeInMainWorld("snatchy", {
   onFailed: (callback) => listen("download:failed", callback)
 });
 
-// Expose window controls für Vela App
+// Expose window controls for the Vela app
 contextBridge.exposeInMainWorld("electron", windowControls);

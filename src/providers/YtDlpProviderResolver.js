@@ -1,14 +1,14 @@
 /**
- * ProviderResolver, der die Auflösung an yt-dlp übergibt.
+ * ProviderResolver that hands the resolution over to yt-dlp.
  *
- * yt-dlp bringt über 1000 Extraktoren mit - für die allermeisten Seiten ist
- * "gib die URL an yt-dlp" die richtige Antwort. Dieser Resolver macht daraus
- * ein reguläres ResolvedMedia, ohne vorher einen Metadaten-Abruf zu starten:
- * das war schon vorher das Verhalten der App und jeder zusätzliche Aufruf
- * würde jeden Download um Sekunden verlängern.
+ * yt-dlp ships with over 1000 extractors - for the vast majority of sites
+ * "give the URL to yt-dlp" is the right answer. This resolver turns it into
+ * a regular ResolvedMedia without starting a metadata fetch beforehand:
+ * that was already the behavior of the app before, and every additional call
+ * would make every download take seconds longer.
  *
- * Er ist damit der Auffang-Resolver mit niedriger Priorität. Wer für eine
- * Seite etwas Besseres kann, registriert einen Resolver mit höherer Priorität.
+ * It is therefore the catch-all resolver with low priority. Whoever can do
+ * something better for a site registers a resolver with higher priority.
  */
 
 const { ProviderResolver } = require("./ProviderResolver");
@@ -34,11 +34,11 @@ class YtDlpProviderResolver extends ProviderResolver {
       sourceUrl: url,
       mediaUrl: url,
       provider: "yt-dlp",
-      // Die eigentliche Formatwahl trifft yt-dlp beim Download anhand der
-      // Nutzereinstellungen (Qualität, mp3/mp4), nicht dieser Resolver.
+      // The actual format choice is made by yt-dlp at download time based on the
+      // user settings (quality, mp3/mp4), not by this resolver.
       meta: {
         handoff: "yt-dlp",
-        // Nur die Art der Auth, nie deren Inhalt.
+        // Only the kind of auth, never its content.
         authType: auth.type
       }
     };

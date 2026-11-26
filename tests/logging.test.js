@@ -10,32 +10,32 @@ const GEHEIMNISSE = ["streng-geheim", "sid=abc123", "Bearer xyz", "hunter2", "ey
 
 const enthaeltKeinGeheimnis = (text) => {
   for (const geheim of GEHEIMNISSE) {
-    assert.doesNotMatch(text, new RegExp(geheim.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Geheimnis im Log: ${geheim}`);
+    assert.doesNotMatch(text, new RegExp(geheim.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `Secret in log: ${geheim}`);
   }
 };
 
-test("Signaturen und Tokens werden aus URLs entfernt", () => {
+test("signatures and tokens are removed from URLs", () => {
   const url = redactUrl("https://cdn.example.com/v.m3u8?token=eyJhbGciOi&sig=abc&expires=123");
   assert.match(url, /token=%5Bredacted%5D|token=\[redacted\]/);
   assert.match(url, /sig=%5Bredacted%5D|sig=\[redacted\]/);
-  assert.match(url, /expires=123/, "harmlose Parameter bleiben erhalten");
+  assert.match(url, /expires=123/, "harmless parameters are kept");
 });
 
-test("Zugangsdaten in der URL werden entfernt", () => {
+test("credentials in the URL are removed", () => {
   assert.equal(
     redactUrl("https://nutzer:hunter2@example.com/feed.xml"),
     "https://example.com/feed.xml"
   );
 });
 
-test("sensible Header werden maskiert, die Namen bleiben", () => {
+test("sensitive headers are masked, the names stay", () => {
   const headers = redactHeaders({ cookie: "sid=abc123", authorization: "Bearer xyz", accept: "*/*" });
   assert.equal(headers.cookie, REDACTED);
   assert.equal(headers.authorization, REDACTED);
   assert.equal(headers.accept, "*/*");
 });
 
-test("redact räumt verschachtelte Strukturen auf", () => {
+test("redact cleans up nested structures", () => {
   const gesaeubert = redact({
     url: "https://example.com/x?token=eyJhbGciOi",
     auth: { type: "cookies", cookies: [{ name: "sid", value: "streng-geheim" }] },
@@ -49,7 +49,7 @@ test("redact räumt verschachtelte Strukturen auf", () => {
   assert.equal(gesaeubert.verschachtelt.harmlos, 1);
 });
 
-test("der Logger schreibt Zeilen ohne Secrets in die Senke", () => {
+test("the logger writes lines without secrets into the sink", () => {
   const zeilen = [];
   const logger = createLogger({ sink: (line) => zeilen.push(line) });
   logger.step("resolver-try", {
@@ -64,13 +64,13 @@ test("der Logger schreibt Zeilen ohne Secrets in die Senke", () => {
   assert.match(zeilen[0], /resolver=hoster/);
 });
 
-test("eine fehlerhafte Senke bringt die Auflösung nicht zum Absturz", () => {
+test("a faulty sink does not crash the resolution", () => {
   const logger = createLogger({ sink: () => { throw new Error("Senke kaputt"); } });
   assert.doesNotThrow(() => logger.step("input", { url: "https://example.com" }));
   assert.equal(logger.entries().length, 1);
 });
 
-test("ein kompletter Durchlauf protokolliert keine Cookies", async () => {
+test("a complete run does not log cookies", async () => {
   const zeilen = [];
   const logger = createLogger({ sink: (line) => zeilen.push(line) });
   const manager = new ResolverManager({

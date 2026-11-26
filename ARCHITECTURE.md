@@ -1,70 +1,70 @@
-# Architektur: Media Resolution
+# Architecture: Media Resolution
 
-Ziel dieser Struktur ist, neue Seiten und Hoster hinzufügen zu können, ohne
-`src/main.js` oder den Downloader anzufassen.
+The goal of this structure is to be able to add new sites and hosts without
+touching `src/main.js` or the downloader.
 
 ```
 Input URL
-  -> SiteResolver        erkennt die Seite, findet Provider-/Hoster-Links
+  -> SiteResolver        recognizes the site, finds provider/host links
   -> Provider URL(s)
-  -> ProviderResolver    löst eine Hoster-URL zu einer Medien-URL auf
-  -> ResolvedMedia       einheitliches Ergebnis
-  -> Downloader          yt-dlp-Kaskade, kennt nur ResolvedMedia
+  -> ProviderResolver    resolves a host URL to a media URL
+  -> ResolvedMedia       uniform result
+  -> Downloader          yt-dlp cascade, only knows ResolvedMedia
 ```
 
-## Verzeichnisse
+## Directories
 
 ```
 src/
   core/
-    types.js            ResolvedMedia/MediaFormat + Normalisierung
-    errors.js           ResolveError + Fehlercodes + Klassifikation
-    ResolveContext.js   Auth, Header, Signal, Services, Logger, Cache
-    registry.js         ResolverRegistry (Auswahl nach canHandle + Priorität)
-    ResolverManager.js  Site -> Provider Pipeline
-    FallbackManager.js  generische Stufen-Pipeline
-    logger.js           strukturiertes Logging inkl. Redaction
-    setup.js            baut die Standard-Pipeline zusammen
+    types.js            ResolvedMedia/MediaFormat + normalization
+    errors.js           ResolveError + error codes + classification
+    ResolveContext.js   Auth, headers, signal, services, logger, cache
+    registry.js         ResolverRegistry (selection by canHandle + priority)
+    ResolverManager.js  Site -> Provider pipeline
+    FallbackManager.js  generic stage pipeline
+    logger.js           structured logging incl. redaction
+    setup.js            assembles the default pipeline
   sites/                SiteResolver (podcast-rss, generic-page)
   providers/            ProviderResolver (direct-media, yt-dlp, playwright-sniffer)
-  auth/                 AuthContext, SessionStore (nur im Speicher)
-  cache/                ResolverCache (kurze TTL, keine Auth-Daten)
-  downloader/           yt-dlp-Argumente und die 5-stufige Download-Kaskade
-tests/                  node:test, ohne zusätzliche Abhängigkeiten
+  auth/                 AuthContext, SessionStore (memory only)
+  cache/                ResolverCache (short TTL, no auth data)
+  downloader/           yt-dlp arguments and the 5-stage download cascade
+tests/                  node:test, no additional dependencies
 ```
 
-## Einen neuen SiteResolver hinzufügen
+## Adding a new SiteResolver
 
-Ein SiteResolver erkennt eine Übersichts- oder Videoseite und liefert
-Media-Referenzen. Er lädt nichts herunter und löst noch keine Medien-URL auf.
+A SiteResolver recognizes an overview or video page and returns
+media references. It downloads nothing and does not resolve a media URL yet.
 
-1. Datei `src/sites/MeineSeiteSiteResolver.js` anlegen:
+1. Create the file `src/sites/MySiteSiteResolver.js`:
 
 ```js
 const { SiteResolver } = require("./SiteResolver");
 const { hostMatches } = require("../core/types");
 const { ResolveError, ResolveErrorCode } = require("../core/errors");
 
-class MeineSeiteSiteResolver extends SiteResolver {
+class MySiteSiteResolver extends SiteResolver {
   constructor() {
-    // Höhere Priorität = wird vor allgemeineren Resolvern getestet.
-    // Referenz: podcast-rss 90, generic-page 1.
-    super({ name: "meine-seite", priority: 70 });
+    // Higher priority = tested before more general resolvers.
+    // Reference: podcast-rss 90, generic-page 1.
+    super({ name: "my-site", priority: 70 });
   }
 
   canHandle(url) {
-    return hostMatches(url, ["meine-seite.example"]);
+    return hostMatches(url, ["my-site.example"]);
   }
 
   async resolve(url, context) {
     context.throwIfAborted();
-    const res = await context.fetch(url);           // HTTP über den Context
+    const res = await context.fetch(url);           // HTTP via the context
     if (res.status === 403) {
-      throw new ResolveError(ResolveErrorCode.AUTH_REQUIRED, "Login nötig.", { resolver: this.name, url });
+      throw new ResolveError(ResolveErrorCode.AUTH_REQUIRED, "Login required.", { resolver: this.name, url });
     }
     const html = await res.text();
 
-    // Mehrere Treffer sind erlaubt: ein Eintrag je gefundenem Hoster-Link.
+    // Several hits are allowed: one entry per host link found.
     return [...html.matchAll(/data-embed="([^"]+)"/g)].map((m) => ({
       sourceUrl: url,
       providerUrl: m[1],
@@ -73,37 +73,37 @@ class MeineSeiteSiteResolver extends SiteResolver {
   }
 }
 
-module.exports = { MeineSeiteSiteResolver };
+module.exports = { MySiteSiteResolver };
 ```
 
-2. In `src/sites/index.js` in `createSiteRegistry()` eintragen (vor
-   `GenericPageSiteResolver`, die Reihenfolge im Array ist aber egal, es zählt
-   `priority`).
+2. Add it in `src/sites/index.js` in `createSiteRegistry()` (before
+   `GenericPageSiteResolver`; the order in the array does not matter, only
+   `priority` counts).
 
-3. Tests in `tests/` ergänzen: `canHandle` für Treffer und Nicht-Treffer,
-   das Parsen mehrerer Links, sowie das erwartete Fehlerverhalten.
+3. Add tests in `tests/`: `canHandle` for hits and non-hits,
+   parsing of several links, and the expected error behavior.
 
-Rückgabefelder: `sourceUrl` (Pflicht), `providerUrl`, `title`, `thumbnail`,
-`duration`, `meta`. Wer bereits eine fertige Medien-URL hat, setzt `mediaUrl` -
-dann überspringt der Manager den Provider-Schritt.
+Return fields: `sourceUrl` (required), `providerUrl`, `title`, `thumbnail`,
+`duration`, `meta`. If you already have a finished media URL, set `mediaUrl`.
+The manager then skips the provider step.
 
-## Einen neuen ProviderResolver hinzufügen
+## Adding a new ProviderResolver
 
-Ein ProviderResolver bekommt eine Hoster-URL und liefert genau ein
-`ResolvedMedia` mit `mediaUrl`.
+A ProviderResolver gets a host URL and returns exactly one
+`ResolvedMedia` with `mediaUrl`.
 
-1. Datei `src/providers/MeinHosterProviderResolver.js` anlegen:
+1. Create the file `src/providers/MyHosterProviderResolver.js`:
 
 ```js
 const { ProviderResolver } = require("./ProviderResolver");
 const { hostMatches } = require("../core/types");
 const { requireAuth } = require("../auth/AuthContext");
 
-class MeinHosterProviderResolver extends ProviderResolver {
+class MyHosterProviderResolver extends ProviderResolver {
   constructor() {
-    // direct-media 80, yt-dlp 10 (Auffang), playwright-sniffer 5.
-    // Wer mehr kann als yt-dlp, liegt darüber.
-    super({ name: "mein-hoster", priority: 60 });
+    // direct-media 80, yt-dlp 10 (catch-all), playwright-sniffer 5.
+    // Anything that can do more than yt-dlp sits above it.
+    super({ name: "my-hoster", priority: 60 });
   }
 
   canHandle(url) {
@@ -112,111 +112,111 @@ class MeinHosterProviderResolver extends ProviderResolver {
 
   async resolve(url, context) {
     if (context.auth.type === "none" && /premium/.test(url)) {
-      throw requireAuth("Dieses Video ist nur mit Login abrufbar.", { resolver: this.name, url });
+      throw requireAuth("This video is only available with login.", { resolver: this.name, url });
     }
     return {
       sourceUrl: url,
       mediaUrl: "https://cdn.hoster.example/stream.m3u8",
-      provider: "mein-hoster",
+      provider: "my-hoster",
       formats: [{ ext: "m3u8", note: "HLS" }]
     };
   }
 }
 
-module.exports = { MeinHosterProviderResolver };
+module.exports = { MyHosterProviderResolver };
 ```
 
-2. In `src/providers/index.js` in `createProviderRegistry()` eintragen.
+2. Add it in `src/providers/index.js` in `createProviderRegistry()`.
 
-3. Tests ergänzen: Erkennung, Normalisierung, und die Fehlercodes.
+3. Add tests: detection, normalization, and the error codes.
 
-## Fehlercodes
+## Error codes
 
-Resolver werfen `ResolveError` mit einem Code, statt nur eine Textmeldung:
+Resolvers throw `ResolveError` with a code instead of just a text message:
 
-| Code | Bedeutung |
+| Code | Meaning |
 | --- | --- |
-| `UNSUPPORTED_URL` | dieser Resolver ist nicht zuständig / kein Extractor |
-| `AUTH_REQUIRED` | ohne Login/Cookies nicht abrufbar |
-| `SESSION_EXPIRED` | vorhandene Session/Cookies sind abgelaufen |
-| `CAPTCHA_REQUIRED` | Bot-Check steht davor |
-| `GEO_RESTRICTED` | im aktuellen Land gesperrt |
-| `PROVIDER_ERROR` | Hoster antwortet mit Fehler/Block (4xx, 5xx, Cloudflare) |
-| `EXTRACTION_FAILED` | Seite erreichbar, aber nichts Verwertbares gefunden |
-| `NETWORK_ERROR` | DNS/Timeout/Verbindung |
-| `DEPENDENCY_MISSING` | yt-dlp/Playwright fehlt (Ergänzung für dieses Projekt) |
-| `CANCELLED` | Nutzer hat abgebrochen, beendet die Pipeline sofort |
+| `UNSUPPORTED_URL` | this resolver is not responsible / no extractor |
+| `AUTH_REQUIRED` | not available without login/cookies |
+| `SESSION_EXPIRED` | existing session/cookies have expired |
+| `CAPTCHA_REQUIRED` | a bot check is in the way |
+| `GEO_RESTRICTED` | blocked in the current country |
+| `PROVIDER_ERROR` | host responds with an error/block (4xx, 5xx, Cloudflare) |
+| `EXTRACTION_FAILED` | site reachable, but nothing usable found |
+| `NETWORK_ERROR` | DNS/timeout/connection |
+| `DEPENDENCY_MISSING` | yt-dlp/Playwright missing (addition for this project) |
+| `CANCELLED` | user cancelled, ends the pipeline immediately |
 
-`classifyMessage()` in `src/core/errors.js` ordnet rohe yt-dlp-Meldungen diesen
-Codes zu. Scheitern mehrere Resolver, wählt `pickMostRelevantError()` den für
-den Nutzer hilfreichsten Fehler (Login-Hinweis schlägt "nichts gefunden").
+`classifyMessage()` in `src/core/errors.js` maps raw yt-dlp messages to these
+codes. If several resolvers fail, `pickMostRelevantError()` picks the error that is
+most helpful to the user (a login hint beats "nothing found").
 
-## Fallback-Pipeline
+## Fallback pipeline
 
-`FallbackManager` führt Stufen nacheinander aus, isoliert deren Fehler und
-protokolliert jeden Schritt. Verwendet wird er an zwei Stellen:
+`FallbackManager` runs stages one after another, isolates their errors and
+logs every step. It is used in two places:
 
-- `ResolverManager`: Resolver-Kandidaten nach Priorität durchprobieren.
-- `src/downloader/YtDlpDownloader.js`: die bestehende Download-Kaskade
+- `ResolverManager`: try resolver candidates by priority.
+- `src/downloader/YtDlpDownloader.js`: the existing download cascade
 
-  1. yt-dlp-Kandidaten (mit Impersonation, falls curl_cffi vorhanden)
-  2. Age-Gate-Bypass (nur wo bekannt, aktuell YouTube)
-  3. ohne Impersonation
-  4. `--force-generic-extractor` (nur bei "Unsupported URL")
-  5. Browser-/Session-basierte Extraktion (nur wenn im UI aktiviert)
+  1. yt-dlp candidates (with impersonation, if curl_cffi is available)
+  2. age-gate bypass (only where known, currently YouTube)
+  3. without impersonation
+  4. `--force-generic-extractor` (only on "Unsupported URL")
+  5. browser/session-based extraction (only if enabled in the UI)
 
-Die Log-Zeilen `[Stufe n/5] ...` sind unverändert geblieben.
+The log lines `[Stufe n/5] ...` have stayed unchanged.
 
 ## Auth
 
-`ResolveContext.auth` ist optional und hat drei Formen: `none`, `cookies`,
-`session`. Regeln:
+`ResolveContext.auth` is optional and has three forms: `none`, `cookies`,
+`session`. Rules:
 
-- Resolver speichern nichts davon, sie bekommen es je Aufruf gereicht.
-- Passwörter sind im `AuthContext` nicht vorgesehen; `createAuthContext()`
-  weist Felder wie `password` oder `token` mit einem Fehler ab.
-- Für Browser-Cookies wird nur der Browsername als Referenz gehalten
-  (`cookiesFromBrowser: "chrome"`), yt-dlp liest die Cookies selbst.
-- `SessionStore` hält Session-Material ausschließlich im Speicher, mit TTL und
-  ohne jede Persistenz.
-- Fehlt die Berechtigung, meldet der Resolver `AUTH_REQUIRED` bzw.
-  `SESSION_EXPIRED`, statt einfach fehlzuschlagen.
+- Resolvers store nothing of it, they are handed it on every call.
+- Passwords are not provided for in the `AuthContext`; `createAuthContext()`
+  rejects fields such as `password` or `token` with an error.
+- For browser cookies only the browser name is kept as a reference
+  (`cookiesFromBrowser: "chrome"`), yt-dlp reads the cookies itself.
+- `SessionStore` keeps session material in memory only, with a TTL and
+  without any persistence.
+- If permission is missing, the resolver reports `AUTH_REQUIRED` or
+  `SESSION_EXPIRED` instead of simply failing.
 
 ## Cache
 
-`ResolverCache` ist optional (`createDefaultResolverManager({ cache: null })`
-schaltet ihn ab). Gecacht werden erkannte Zuständigkeiten (lange TTL) und
-Auflösungsergebnisse (kurze TTL, weil signierte URLs schnell ablaufen).
-`set()` weist Werte mit Cookies/Tokens/Session-Ids zurück, und bei aktivem
-Auth-Context wird der Cache gar nicht erst benutzt.
+`ResolverCache` is optional (`createDefaultResolverManager({ cache: null })`
+turns it off). Detected responsibilities (long TTL) and
+resolution results (short TTL, because signed URLs expire quickly) are cached.
+`set()` rejects values with cookies/tokens/session ids, and with an active
+auth context the cache is not used at all.
 
 ## Logging
 
-Jeder Schritt geht über `src/core/logger.js`:
+Every step goes through `src/core/logger.js`:
 
 ```
 input -> site-detected -> provider-detected -> resolver-try
       -> resolver-ok | resolver-fail -> fallback -> result
 ```
 
-Vor der Ausgabe entfernt `redact()` Cookie-, Authorization- und Token-Werte
-sowie Signaturparameter aus URLs. Die Test-Datei `tests/logging.test.js` prüft
-das für einen kompletten Durchlauf.
+Before output, `redact()` removes cookie, authorization and token values
+as well as signature parameters from URLs. The test file `tests/logging.test.js` checks
+this for a complete run.
 
-## Was bewusst nicht getan wird
+## What is deliberately not done
 
-Es wird kein Zugriffsschutz umgangen und kein DRM entschlüsselt. Der
-Playwright-Resolver beobachtet nur die Netzwerkanfragen, die die Seite ohnehin
-stellt; verschlüsselte Streams laufen bewusst in einen Fehler.
+No access protection is circumvented and no DRM is decrypted. The
+Playwright resolver only observes the network requests the page makes
+anyway; encrypted streams deliberately end in an error.
 
 ## Tests
 
 ```
-npm test     # node:test, alle Dateien unter tests/
-npm run check  # Syntaxprüfung aller CommonJS-Dateien
+npm test     # node:test, all files under tests/
+npm run check  # syntax check of all CommonJS files
 ```
 
-Abgedeckt sind unter anderem: Resolver-Erkennung und -Priorität,
-Fallback-Verhalten, Auth-/Session-/Netzwerkfehler, ungültige URLs, mehrere
-Provider auf einer Seite, Normalisierung zu `ResolvedMedia`, die
-Download-Kaskade Stufe für Stufe und die Redaction im Logging.
+Covered among other things: resolver detection and priority,
+fallback behavior, auth/session/network errors, invalid URLs, several
+providers on one page, normalization to `ResolvedMedia`, the
+download cascade stage by stage and the redaction in logging.

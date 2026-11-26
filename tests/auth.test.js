@@ -12,13 +12,13 @@ const { SessionStore } = require("../src/auth/SessionStore");
 const { createResolveContext, describeContext } = require("../src/core/ResolveContext");
 const { ResolveErrorCode } = require("../src/core/errors");
 
-test("ohne Angabe gibt es keine Auth", () => {
+test("without input there is no auth", () => {
   const auth = createAuthContext();
   assert.deepEqual(auth, { type: "none" });
   assert.equal(hasAuth(auth), false);
 });
 
-test("Cookies werden normalisiert, der Browser bleibt eine Referenz", () => {
+test("cookies are normalized, the browser stays a reference", () => {
   const auth = createAuthContext({
     type: "cookies",
     cookiesFromBrowser: "firefox",
@@ -33,22 +33,22 @@ test("Cookies werden normalisiert, der Browser bleibt eine Referenz", () => {
   assert.equal(auth.cookiesFromBrowser, "firefox");
 });
 
-test("Passwörter sind im AuthContext nicht vorgesehen", () => {
+test("passwords are not provided for in the AuthContext", () => {
   for (const feld of ["password", "secret", "token", "apiKey"]) {
     assert.throws(
       () => createAuthContext({ type: "cookies", [feld]: "geheim" }),
-      /nicht erlaubt/,
+      /not allowed/,
       feld
     );
   }
 });
 
-test("eine Session braucht eine sessionId", () => {
+test("a session needs a sessionId", () => {
   assert.throws(() => createAuthContext({ type: "session" }), /sessionId/);
   assert.equal(createAuthContext({ type: "session", sessionId: "s-1" }).sessionId, "s-1");
 });
 
-test("describeAuth gibt niemals Werte preis", () => {
+test("describeAuth never reveals values", () => {
   const auth = createAuthContext({
     type: "cookies",
     cookiesFromBrowser: "chrome",
@@ -59,14 +59,14 @@ test("describeAuth gibt niemals Werte preis", () => {
   assert.doesNotMatch(beschreibung, /streng-geheim/);
 });
 
-test("Resolver können Auth-/Session-Bedarf strukturiert melden", () => {
+test("resolvers can report auth/session needs in a structured way", () => {
   const auth = requireAuth("Login nötig", { resolver: "hoster" });
   assert.equal(auth.code, ResolveErrorCode.AUTH_REQUIRED);
   assert.equal(auth.details.needs, "cookies");
   assert.equal(sessionExpired().code, ResolveErrorCode.SESSION_EXPIRED);
 });
 
-test("der SessionStore hält Daten nur im Speicher und nur auf Zeit", () => {
+test("the SessionStore keeps data in memory only and only for a limited time", () => {
   let jetzt = 1_000;
   const store = new SessionStore({ ttlMs: 100, now: () => jetzt });
   const id = store.create({ cookies: [{ name: "sid", value: "x" }] });
@@ -75,20 +75,20 @@ test("der SessionStore hält Daten nur im Speicher und nur auf Zeit", () => {
   jetzt += 101;
   assert.equal(store.get(id), null, "abgelaufene Sessions verschwinden");
   assert.equal(store.size(), 0);
-  // Serialisierung enthält niemals Inhalte.
+  // Serialization never contains contents.
   assert.deepEqual(JSON.parse(JSON.stringify(store)), { sessions: 0, persisted: false });
 });
 
-test("der SessionStore begrenzt die Anzahl der Einträge", () => {
+test("the SessionStore limits the number of entries", () => {
   const store = new SessionStore({ maxEntries: 2 });
   const a = store.create({});
   store.create({});
   store.create({});
   assert.equal(store.size(), 2);
-  assert.equal(store.has(a), false, "der älteste Eintrag wird verdrängt");
+  assert.equal(store.has(a), false, "the oldest entry is evicted");
 });
 
-test("der ResolveContext trennt Auth von den Resolvern", () => {
+test("the ResolveContext separates auth from the resolvers", () => {
   const context = createResolveContext({
     auth: { type: "cookies", cookiesFromBrowser: "chrome" },
     headers: { "X-Test": "1", Cookie: "sid=geheim" },
@@ -100,11 +100,11 @@ test("der ResolveContext trennt Auth von den Resolvern", () => {
   assert.equal(context.userAgent, "Snatchy/1.0");
 
   const beschreibung = JSON.stringify(describeContext(context));
-  assert.match(beschreibung, /"cookie"/, "Header-Namen bleiben sichtbar");
-  assert.doesNotMatch(beschreibung, /geheim/, "Header-Werte nicht");
+  assert.match(beschreibung, /"cookie"/, "header names stay visible");
+  assert.doesNotMatch(beschreibung, /geheim/, "header values do not");
 });
 
-test("ein abgebrochener Context meldet sich sofort", () => {
+test("a cancelled context reports immediately", () => {
   const controller = new AbortController();
   const context = createResolveContext({ signal: controller.signal });
   assert.equal(context.isAborted(), false);
@@ -113,7 +113,7 @@ test("ein abgebrochener Context meldet sich sofort", () => {
   assert.throws(() => context.throwIfAborted(), (err) => err.code === ResolveErrorCode.CANCELLED);
 });
 
-test("context.fetch ergänzt die Header des Contexts", async () => {
+test("context.fetch adds the headers of the context", async () => {
   const gesehen = [];
   const context = createResolveContext({
     headers: { "user-agent": "Snatchy/1.0" },

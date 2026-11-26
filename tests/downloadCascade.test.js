@@ -19,8 +19,8 @@ const optionen = {
 const mediaFuer = (url) => ({ sourceUrl: url, mediaUrl: url, provider: "yt-dlp" });
 
 /**
- * Baut einen runDownload-Ersatz, der die Aufrufe mitschreibt und je Aufruf
- * das nächste Ergebnis aus `verlauf` liefert (Error = Wurf).
+ * Builds a runDownload replacement that records the calls and returns
+ * the next result from `verlauf` on each call (Error = throw).
  */
 const fakeRunner = (verlauf) => {
   const aufrufe = [];
@@ -36,7 +36,7 @@ const fakeRunner = (verlauf) => {
 
 const fehler = (message, code) => Object.assign(new Error(message), code ? { code } : {});
 
-test("Stufe 1: Erfolg beim ersten Kandidaten, keine weiteren Stufen", async () => {
+test("Stage 1: success with the first candidate, no further stages", async () => {
   const { runDownload, aufrufe } = fakeRunner(["C:/Downloads/video.mp4"]);
   const logs = [];
   const result = await runDownloadCascade({
@@ -56,7 +56,7 @@ test("Stufe 1: Erfolg beim ersten Kandidaten, keine weiteren Stufen", async () =
   assert.match(logs[0], /^\[Stufe 1\/5\] Starte mit yt-dlp \(Impersonation: chrome\)$/);
 });
 
-test("Stufe 1: fehlendes yt-dlp führt zum nächsten Kandidaten", async () => {
+test("Stage 1: missing yt-dlp leads to the next candidate", async () => {
   const { runDownload, aufrufe } = fakeRunner([
     fehler("yt-dlp wurde nicht gefunden.", "ENOENT"),
     "C:/Downloads/video.mp4"
@@ -73,7 +73,7 @@ test("Stufe 1: fehlendes yt-dlp führt zum nächsten Kandidaten", async () => {
   assert.deepEqual(aufrufe.map((a) => a.command), ["yt-dlp", "python"]);
 });
 
-test("kein einziges yt-dlp gefunden: ENOENT bleibt erhalten", async () => {
+test("no yt-dlp found at all: ENOENT is preserved", async () => {
   const { runDownload } = fakeRunner([fehler("nicht gefunden", "ENOENT")]);
   const result = await runDownloadCascade({
     media: mediaFuer(optionen.url),
@@ -88,7 +88,7 @@ test("kein einziges yt-dlp gefunden: ENOENT bleibt erhalten", async () => {
   assert.match(buildFailureMessage(result.error, { options: optionen, deps: {} }), /yt-dlp wurde nicht gefunden/);
 });
 
-test("Stufe 2 und 3: Age-Gate-Bypass, danach ohne Impersonation", async () => {
+test("Stages 2 and 3: age-gate bypass, then without impersonation", async () => {
   const { runDownload, aufrufe } = fakeRunner([
     fehler("ERROR: Sign in to confirm your age"),
     fehler("ERROR: Sign in to confirm your age"),
@@ -112,7 +112,7 @@ test("Stufe 2 und 3: Age-Gate-Bypass, danach ohne Impersonation", async () => {
   assert.ok(logs.some((l) => l.startsWith("[Stufe 3/5]")));
 });
 
-test("ohne bekannten Age-Gate-Bypass wird Stufe 2 übersprungen", async () => {
+test("without a known age-gate bypass stage 2 is skipped", async () => {
   const { runDownload, aufrufe } = fakeRunner([
     fehler("HTTP Error 410: Gone"),
     "C:/Downloads/video.mp4"
@@ -132,7 +132,7 @@ test("ohne bekannten Age-Gate-Bypass wird Stufe 2 übersprungen", async () => {
   assert.ok(logs.some((l) => l.startsWith("[Stufe 3/5]")));
 });
 
-test("ohne Impersonation entfallen die Stufen 2 und 3", async () => {
+test("without impersonation stages 2 and 3 are dropped", async () => {
   const { runDownload, aufrufe } = fakeRunner([fehler("HTTP Error 403: Forbidden")]);
   const logs = [];
   const result = await runDownloadCascade({
@@ -149,7 +149,7 @@ test("ohne Impersonation entfallen die Stufen 2 und 3", async () => {
   assert.ok(!logs.some((l) => l.startsWith("[Stufe 2/5]") || l.startsWith("[Stufe 3/5]")));
 });
 
-test("Stufe 4 greift nur bei Unsupported URL", async () => {
+test("Stage 4 only applies on Unsupported URL", async () => {
   const { runDownload, aufrufe } = fakeRunner([
     fehler("ERROR: Unsupported URL: https://beispiel.example/video/1"),
     fehler("ERROR: Unsupported URL: https://beispiel.example/video/1"),
@@ -170,7 +170,7 @@ test("Stufe 4 greift nur bei Unsupported URL", async () => {
   assert.ok(logs.some((l) => l.startsWith("[Stufe 4/5]")));
 });
 
-test("Stufe 5 nutzt die aufgelöste Stream-URL", async () => {
+test("Stage 5 uses the resolved stream URL", async () => {
   const nichtUnterstuetzt = fehler("ERROR: Unsupported URL: https://beispiel.example/video/1");
   const { runDownload, aufrufe } = fakeRunner([
     nichtUnterstuetzt, nichtUnterstuetzt, nichtUnterstuetzt, "C:/Downloads/video.mp4"
@@ -195,7 +195,7 @@ test("Stufe 5 nutzt die aufgelöste Stream-URL", async () => {
   assert.ok(logs.some((l) => l.startsWith("[Stufe 5/5]")));
 });
 
-test("Stufe 5 bleibt aus, wenn der Fallback nicht aktiviert ist", async () => {
+test("Stage 5 stays off when the fallback is not enabled", async () => {
   let gefragt = false;
   const { runDownload } = fakeRunner([fehler("ERROR: Unsupported URL: x")]);
   const result = await runDownloadCascade({
@@ -211,7 +211,7 @@ test("Stufe 5 bleibt aus, wenn der Fallback nicht aktiviert ist", async () => {
   assert.equal(gefragt, false);
 });
 
-test("kein Stream gefunden ergibt die passende Meldung", async () => {
+test("no stream found gives the matching message", async () => {
   const nichtUnterstuetzt = fehler("ERROR: Unsupported URL: x");
   const { runDownload } = fakeRunner([nichtUnterstuetzt]);
   const result = await runDownloadCascade({
@@ -230,7 +230,7 @@ test("kein Stream gefunden ergibt die passende Meldung", async () => {
   );
 });
 
-test("Fehlermeldung: nicht unterstützte Seite mit Hinweis auf den Fallback", () => {
+test("Error message: unsupported site with hint about the fallback", () => {
   const message = buildFailureMessage(fehler("ERROR: Unsupported URL: x"), {
     options: { playwrightFallback: false },
     deps: { ffmpegAvailable: true }
@@ -245,7 +245,7 @@ test("Fehlermeldung: nicht unterstützte Seite mit Hinweis auf den Fallback", ()
   assert.doesNotMatch(ohneHinweis, /Playwright-Fallback in den Einstellungen/);
 });
 
-test("Fehlermeldung: fehlendes ffmpeg und Block-Tipps", () => {
+test("Error message: missing ffmpeg and block tips", () => {
   const message = buildFailureMessage(fehler("HTTP Error 403: Forbidden"), {
     options: { playwrightFallback: false },
     deps: { ffmpegAvailable: false }
@@ -254,7 +254,7 @@ test("Fehlermeldung: fehlendes ffmpeg und Block-Tipps", () => {
   assert.match(message, /Browser-Impersonation aktivieren/);
 });
 
-test("Fehlermeldung: Playwright-Setupfehler wird durchgereicht", () => {
+test("Error message: Playwright setup error is passed through", () => {
   const setupFehler = Object.assign(new Error("Playwright nicht installiert. Bitte ausführen: npm install playwright"), {
     code: "EXTRACTION_FAILED",
     details: { setup: "PLAYWRIGHT_MISSING" }
@@ -265,10 +265,10 @@ test("Fehlermeldung: Playwright-Setupfehler wird durchgereicht", () => {
   );
 });
 
-test("Stufe 5 läuft auch, wenn Stufe 4 mit einer anderen Meldung scheitert", async () => {
-  // Genau der Fall aus der Praxis: Stufe 4 findet ein eingebettetes Video und
-  // scheitert daran, die Meldung hat mit "Unsupported URL" nichts mehr zu tun.
-  // Trotzdem muss die Browser-Stufe noch drankommen.
+test("Stage 5 also runs when stage 4 fails with a different message", async () => {
+  // Exactly the case from practice: stage 4 finds an embedded video and
+  // fails at it; the message has nothing to do with "Unsupported URL" any more.
+  // The browser stage must still get its turn.
   let aufruf = 0;
   const aufrufe = [];
   const result = await runDownloadCascade({
@@ -295,7 +295,7 @@ test("Stufe 5 läuft auch, wenn Stufe 4 mit einer anderen Meldung scheitert", as
   assert.equal(aufrufe[2].url, "https://cdn.beispiel.example/stream.m3u8");
 });
 
-test("ohne Hinweis auf einen fehlenden Extractor bleiben Stufe 4 und 5 aus", async () => {
+test("without a hint of a missing extractor stages 4 and 5 stay off", async () => {
   let gefragt = false;
   const { runDownload, aufrufe } = fakeRunner([fehler("HTTP Error 403: Forbidden")]);
   const result = await runDownloadCascade({
@@ -312,7 +312,7 @@ test("ohne Hinweis auf einen fehlenden Extractor bleiben Stufe 4 und 5 aus", asy
   assert.equal(gefragt, false);
 });
 
-test("ein Abbruch stoppt die Kaskade, statt die nächste Stufe zu starten", async () => {
+test("a cancellation stops the cascade instead of starting the next stage", async () => {
   let abgebrochen = false;
   const aufrufe = [];
   const result = await runDownloadCascade({
@@ -322,17 +322,17 @@ test("ein Abbruch stoppt die Kaskade, statt die nächste Stufe zu starten", asyn
     candidates: KANDIDATEN,
     runDownload: async (_c, opts) => {
       aufrufe.push(opts.url);
-      abgebrochen = true; // der Nutzer klickt während des Downloads auf Abbrechen
+      abgebrochen = true; // the user clicks Cancel during the download
       throw fehler("yt-dlp wurde mit Code 1 beendet.");
     },
     isCancelled: () => abgebrochen
   });
 
   assert.equal(result.ok, false);
-  assert.equal(aufrufe.length, 1, "keine weitere Stufe nach dem Abbruch");
+  assert.equal(aufrufe.length, 1, "no further stage after the cancellation");
 });
 
-test("nach einem Abbruch wird kein weiterer yt-dlp-Kandidat probiert", async () => {
+test("after a cancellation no further yt-dlp candidate is tried", async () => {
   let abgebrochen = false;
   const aufrufe = [];
   await runDownloadCascade({
@@ -351,7 +351,7 @@ test("nach einem Abbruch wird kein weiterer yt-dlp-Kandidat probiert", async () 
   assert.deepEqual(aufrufe, ["yt-dlp"]);
 });
 
-test("die Downloader-Schicht nutzt die Medien-URL, nicht die Quell-URL", async () => {
+test("the downloader layer uses the media URL, not the source URL", async () => {
   const { runDownload, aufrufe } = fakeRunner(["C:/Downloads/folge1.mp3"]);
   await runDownloadCascade({
     media: {

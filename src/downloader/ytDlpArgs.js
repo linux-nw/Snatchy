@@ -1,31 +1,31 @@
 /**
- * Aufbau der yt-dlp-Kommandozeile.
+ * Construction of the yt-dlp command line.
  *
- * Unverändert aus main.js herausgelöst, damit die Argumente ohne Electron
- * testbar sind. Die Downloader-Schicht arbeitet mit einer fertigen URL aus
- * einem ResolvedMedia und weiß nichts über Provider.
+ * Extracted unchanged from main.js so the arguments can be tested without Electron.
+ * The downloader layer works with a ready URL from
+ * a ResolvedMedia and knows nothing about providers.
  */
 
-// Erlaubte Zeichensätze für Dateinamen (= Python-Codec-Namen, an PYTHONIOENCODING).
-// "system" lässt die Umgebung unberührt. Unbekannte Werte -> utf-8.
+// Allowed character sets for file names (= Python codec names, passed to PYTHONIOENCODING).
+// "system" leaves the environment untouched. Unknown values -> utf-8.
 const ALLOWED_ENCODINGS = new Set([
   "system", "utf-8", "utf-8-sig", "utf-16", "ascii",
   "cp1252", "latin-1", "iso-8859-15", "cp437", "cp850", "mac-roman"
 ]);
 const normalizeEncoding = (enc) => (ALLOWED_ENCODINGS.has(enc) ? enc : "utf-8");
 
-// Browser, deren Cookies yt-dlp via --cookies-from-browser auslesen kann.
+// Browsers whose cookies yt-dlp can read via --cookies-from-browser.
 const ALLOWED_BROWSERS = new Set([
   "none", "chrome", "firefox", "edge", "brave", "opera", "vivaldi", "chromium", "safari", "whale"
 ]);
 
-// Whisper-Modelle (Sprache -> Text). Größer = genauer aber langsamer. Default: base.
+// Whisper models (speech -> text). Larger = more accurate but slower. Default: base.
 const ALLOWED_WHISPER_MODELS = new Set(["tiny", "base", "small", "medium", "large"]);
 const normalizeWhisperModel = (m) => (ALLOWED_WHISPER_MODELS.has(m) ? m : "base");
 
 /**
- * Liefert domain-spezifische extractor-args für Stufe 2 der Retry-Kaskade,
- * oder null wenn für diese URL kein passender Age-Gate-Bypass bekannt ist.
+ * Returns domain-specific extractor-args for stage 2 of the retry cascade,
+ * or null if no matching age-gate bypass is known for this URL.
  * @param {string} url
  * @returns {string[]|null}
  */
@@ -37,7 +37,7 @@ const getAgeGateExtraArgs = (url) => {
 };
 
 /**
- * Vorbereitung für yt-dlp Download.
+ * Preparation for the yt-dlp download.
  * @param {Object} options
  * @returns {string[]}
  */
@@ -50,19 +50,19 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
     "10",
     "--fragment-retries",
     "10",
-    // yt-dlp braucht seit 2026.08 einen echten JS-Interpreter, um YouTubes
-    // Signatur-Cipher (n-sig) zu lösen; ohne ihn bleiben Streams serverseitig
-    // hart gedrosselt (kurzer Burst, dann kaum noch Durchsatz). "deno" ist
-    // Standard, aber selten vorhanden – "node" läuft praktisch überall, wo
-    // schon Node.js installiert ist, und wird sonst folgenlos ignoriert.
+    // Since 2026.08 yt-dlp needs a real JS interpreter to solve the YouTube
+    // signature cipher (n-sig); without it streams stay throttled
+    // hard on the server side (short burst, then hardly any throughput). "deno" is
+    // the default but rarely present - "node" works practically everywhere
+    // Node.js is already installed, and is otherwise ignored without effect.
     "--js-runtimes",
     "node",
-    // Mehrere Segmente gleichzeitig laden statt nacheinander: YouTube drosselt
-    // pro Segment nach einem kurzen Burst (Ramp-Throttle), viele parallele
-    // Segmente summieren ihre Burst-Phasen zu spürbar mehr Durchsatz.
+    // Download several segments at once instead of one after another: YouTube throttles
+    // per segment after a short burst (ramp throttle), many parallel
+    // segments add up their burst phases to noticeably more throughput.
     "--concurrent-fragments",
     "16",
-    // Kleinere Chunks = häufigere Resets der Drosselung, bevor sie greift.
+    // Smaller chunks = more frequent resets of the throttling before it kicks in.
     "--http-chunk-size",
     "2M",
     "--paths",
@@ -83,23 +83,23 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
       "--audio-quality",
       audioQuality && audioQuality !== "undefined" ? audioQuality : "0"
     );
-    // Video-Thumbnail als Cover-Art in die MP3 (ID3 APIC) einbetten, wenn gewünscht.
+    // Embed the video thumbnail as cover art in the MP3 (ID3 APIC), if requested.
     if (embedCoverArt) {
       args.push("--embed-thumbnail");
     }
   } else if (format === "audio-raw") {
-    // Nur für die interne Whisper-Vorbereitung: bestes Audio ohne ffmpeg-Reencode.
-    // Whisper sampelt intern ohnehin auf 16 kHz Mono herunter, ein MP3-Reencode
-    // mit Bestqualität davor kostet nur Zeit ohne jeden Nutzen.
+    // Only for the internal Whisper preparation: best audio without ffmpeg re-encode.
+    // Whisper downsamples to 16 kHz mono internally anyway, an MP3 re-encode
+    // at best quality beforehand only costs time without any benefit.
     args.push("--format", "bestaudio/best");
   } else {
-    // Robuste Format-Auswahl mit mehreren Fallbacks (durch "/" getrennt), damit
-    // möglichst viele Seiten klappen – auch solche ohne getrennte Video/Audio-
-    // Streams oder ohne height-Angabe (Pornhub, GayForFans, generischer Extractor):
-    //   1. bestes Video ≤ Wunschhöhe + bestes Audio (getrennte Streams)
-    //   2. bestes Einzelformat ≤ Wunschhöhe (progressiv)
-    //   3. bestes Video + bestes Audio ohne Höhenlimit
-    //   4. irgendein bestes Format ("best" / "b")
+    // Robust format selection with several fallbacks (separated by "/") so that
+    // as many sites as possible work, including those without separate video/audio
+    // streams or without a height value (Pornhub, GayForFans, generic extractor):
+    //   1. best video up to the desired height + best audio (separate streams)
+    //   2. best single format up to the desired height (progressive)
+    //   3. best video + best audio without height limit
+    //   4. any best format ("best" / "b")
     let formatString = "bestvideo*+bestaudio/best";
     if (quality && quality !== "best" && quality !== "undefined") {
       formatString = `bestvideo*[height<=${quality}]+bestaudio/best[height<=${quality}]/bestvideo*+bestaudio/best`;
@@ -110,11 +110,11 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
       "--merge-output-format",
       "mp4"
     );
-    // --embed-chapters bettet Kapitelmarken ein, wo die Seite sie liefert
-    // (z. B. YouTube-Kapitel, Twitch-VOD-Marker) – no-op sonst, kostet nichts.
+    // --embed-chapters embeds chapter marks where the site provides them
+    // (e.g. YouTube chapters, Twitch VOD markers), no-op otherwise, costs nothing.
     args.push("--embed-subs", "--embed-metadata", "--embed-chapters");
-    // Video-Thumbnail als Cover-Art einbetten (attached-pic Stream im MP4),
-    // genau wie bei MP3 – dieselbe Einstellung gilt für beide Formate.
+    // Embed the video thumbnail as cover art (attached-pic stream in the MP4),
+    // just like with MP3. The same setting applies to both formats.
     if (embedCoverArt) {
       args.push("--embed-thumbnail");
     }
@@ -132,13 +132,13 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
     args.push("--yes-playlist");
   }
 
-  // aria2c mit mehreren echten parallelen TCP-Verbindungen für reine HTTP/FTP-
-  // Downloads. Ein einzelner Stream schöpft die Leitung über die Distanz zu
-  // Googles CDN oft nicht annähernd aus (RTT/TCP-Fenster-Limit) – 16 parallele
-  // Verbindungen brachten im Test ~80-90 Mbit/s statt ~10 Mbit/s mit einem
-  // Stream, ohne von YouTube blockiert zu werden. dash/m3u8 (HLS-Seiten wie
-  // Twitch) bleiben beim nativen Downloader, da dort schon viele kleine
-  // Segmente einzeln laufen und aria2c pro Segment nur Overhead wäre.
+  // aria2c with several real parallel TCP connections for plain HTTP/FTP
+  // downloads. A single stream often does not come close to using the line over the distance to
+  // the Google CDN (RTT/TCP window limit). 16 parallel
+  // connections gave ~80-90 Mbit/s in testing instead of ~10 Mbit/s with a
+  // single stream, without being blocked by YouTube. dash/m3u8 (HLS sites like
+  // Twitch) stay with the native downloader, since many small
+  // segments already run individually there and aria2c would only add overhead per segment.
   if (aria2Path) {
     args.push(
       "--downloader", aria2Path,
@@ -147,10 +147,10 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
     );
   }
 
-  // Generische Hebel für breite Seiten-Kompatibilität:
-  // - Browser-Impersonation ahmt einen echten Browser nach (TLS/HTTP2-Fingerprint)
-  //   und umgeht damit Anti-Bot/Cloudflare-Blocks (403/410/429 …) auf vielen Seiten.
-  // - Cookies aus dem Browser schalten Login-/Altersschranken frei.
+  // Generic levers for broad site compatibility:
+  // - Browser impersonation mimics a real browser (TLS/HTTP2 fingerprint)
+  //   and thereby gets around anti-bot/Cloudflare blocks (403/410/429 ...) on many sites.
+  // - Cookies from the browser unlock login/age restrictions.
   if (impersonate) {
     args.push("--impersonate", "chrome");
   }
@@ -158,12 +158,12 @@ const buildYtDlpArgs = ({ url, format, quality, audioQuality, playlistMode, outp
     args.push("--cookies-from-browser", cookiesBrowser);
   }
 
-  args.push("--", url); // "--": die URL wird nie als Option gelesen
+  args.push("--", url); // "--": the URL is never read as an option
   return args;
 };
 
 /**
- * Argumente für den Untertitel-Abruf (Stufe 1 der Transkript-Pipeline).
+ * Arguments for the subtitle fetch (stage 1 of the transcript pipeline).
  * @param {Object} options
  * @returns {string[]}
  */
@@ -187,13 +187,13 @@ const buildSubtitleArgs = ({ url, subLangs, outputFolder, cookiesBrowser, impers
   ];
   if (impersonate) args.push("--impersonate", "chrome");
   if (cookiesBrowser && cookiesBrowser !== "none") args.push("--cookies-from-browser", cookiesBrowser);
-  args.push("--", url); // "--": die URL wird nie als Option gelesen
+  args.push("--", url); // "--": the URL is never read as an option
   return args;
 };
 
 /**
- * Argumente für einen reinen Metadaten-Abruf (--print), z. B. Thumbnail-URL
- * oder Videosprache.
+ * Arguments for a pure metadata fetch (--print), e.g. thumbnail URL
+ * or video language.
  * @param {{ field: string, url: string, cookiesBrowser?: string, impersonate?: boolean }} options
  * @returns {string[]}
  */
@@ -201,7 +201,7 @@ const buildPrintArgs = ({ field, url, cookiesBrowser, impersonate }) => {
   const args = ["--skip-download", "--no-playlist", "--print", field];
   if (impersonate) args.push("--impersonate", "chrome");
   if (cookiesBrowser && cookiesBrowser !== "none") args.push("--cookies-from-browser", cookiesBrowser);
-  args.push("--", url); // "--": die URL wird nie als Option gelesen
+  args.push("--", url); // "--": the URL is never read as an option
   return args;
 };
 

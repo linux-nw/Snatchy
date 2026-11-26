@@ -1,9 +1,9 @@
 /**
- * Downloader-Schicht.
+ * Downloader layer.
  *
- * Arbeitet ausschließlich mit normalisierten ResolvedMedia-Objekten und den
- * Nutzeroptionen. Welcher Site- oder ProviderResolver das Medium geliefert
- * hat, spielt hier keine Rolle mehr.
+ * Works only with normalized ResolvedMedia objects and the
+ * user options. Which site or provider resolver delivered the medium
+ * no longer matters here.
  */
 
 const { runDownloadCascade, buildFailureMessage } = require("./YtDlpDownloader");

@@ -1,21 +1,21 @@
-// Lädt die externen Programme, die die App braucht, nach vendor/bin:
-// yt-dlp, ffmpeg + ffprobe, deno (JS-Runtime für YouTube) und aria2c.
-// electron-builder packt den Ordner über "extraResources" in den Installer,
-// main.js sucht dort zuerst.
+// Downloads the external programs the app needs into vendor/bin:
+// yt-dlp, ffmpeg + ffprobe, deno (JS runtime for YouTube) and aria2c.
+// electron-builder packs the folder into the installer via "extraResources",
+// main.js looks there first.
 //
-// Version UND SHA-256 jeder Datei sind hier fest hinterlegt. Der Download kommt
-// über die feste Release-URL, die Prüfsumme stammt nicht aus der Antwort des
-// Servers, sondern aus diesem Repository. Ändert sich eine Datei (oder ein
-// Release wird manipuliert), bricht der Build ab.
+// Version AND SHA-256 of every file are pinned here. The download comes
+// from the fixed release URL, the checksum does not come from the response of the
+// server but from this repository. If a file changes (or a
+// release is tampered with), the build aborts.
 //
-// Aufruf:
-//   node scripts/fetch-binaries.js [--force]   Programme laden (--force ersetzt vorhandene)
-//   node scripts/fetch-binaries.js --show-latest   neueste Versionen samt Prüfsummen anzeigen,
-//                                                  zum Aktualisieren der festen Werte unten
+// Usage:
+//   node scripts/fetch-binaries.js [--force]   download programs (--force replaces existing ones)
+//   node scripts/fetch-binaries.js --show-latest   show latest versions with checksums,
+//                                                  for updating the pinned values below
 //
-// Neue Version eintragen: --show-latest ausführen, die Prüfsumme gegen die vom
-// Hersteller veröffentlichte Prüfsummen-Datei (yt-dlp: SHA2-256SUMS, deno:
-// *.sha256sum, FFmpeg-Builds: checksums.sha256) prüfen und tag/digest/asset ersetzen.
+// Entering a new version: run --show-latest, check the checksum against the
+// checksum file published by the vendor (yt-dlp: SHA2-256SUMS, deno:
+// *.sha256sum, FFmpeg-Builds: checksums.sha256) and replace tag/digest/asset.
 
 const fs = require("node:fs");
 const path = require("node:path");
@@ -28,14 +28,14 @@ const TMP_DIR = path.join(ROOT, "vendor", ".download");
 const FORCE = process.argv.includes("--force");
 const SHOW_LATEST = process.argv.includes("--show-latest");
 
-// Festes Release (tag), feste Datei (asset), feste Prüfsumme (digest).
-// Die Prüfsummen wurden gegen die Hersteller-Prüfsummendateien gegengeprüft:
-//   yt-dlp  2026.10.26  SHA2-256SUMS der Release
-//   deno    v2.9.8      deno-x86_64-pc-windows-msvc.zip.sha256sum der Release
-//   ffmpeg  autobuild-2026-11-10-20-59  checksums.sha256 der Release
-//   aria2   release-1.37.0  (keine Prüfsummen-Datei; Wert selbst berechnet)
-// Hinweis: FFmpeg-Builds löschen alte datierte Releases nach einiger Zeit. Fehlt der
-// Tag (HTTP 404), mit --show-latest einen aktuellen Tag samt Prüfsumme eintragen.
+// Pinned release (tag), pinned file (asset), pinned checksum (digest).
+// The checksums were cross-checked against the vendor checksum files:
+//   yt-dlp  2026.10.26  SHA2-256SUMS of the release
+//   deno    v2.9.8      deno-x86_64-pc-windows-msvc.zip.sha256sum of the release
+//   ffmpeg  autobuild-2026-11-10-20-59  checksums.sha256 of the release
+//   aria2   release-1.37.0  (no checksum file; value computed by ourselves)
+// Note: FFmpeg builds delete old dated releases after some time. If the
+// tag is missing (HTTP 404), enter a current tag with checksum using --show-latest.
 const SOURCES = [
   {
     name: "yt-dlp",
@@ -51,7 +51,7 @@ const SOURCES = [
     tag: "autobuild-2026-11-10-20-59",
     asset: "ffmpeg-N-128757-g4b42530309-win64-gpl-shared.zip",
     digest: "sha256:c780c81afa60bd79545e6391d383ee5142806d754c96f487c4eeec344841eb48",
-    // Shared-Build: ffmpeg/ffprobe sind klein, die Codecs liegen in den DLLs.
+    // Shared build: ffmpeg/ffprobe are small, the codecs live in the DLLs.
     files: [
       { from: "*/bin/ffmpeg.exe", to: "ffmpeg.exe" },
       { from: "*/bin/ffprobe.exe", to: "ffprobe.exe" },
@@ -94,10 +94,10 @@ const extractZip = (zip, dest) => {
     "-NoProfile", "-NonInteractive", "-Command",
     "Expand-Archive -LiteralPath $env:SNATCHY_ZIP -DestinationPath $env:SNATCHY_DEST -Force"
   ], { stdio: "inherit", env: { ...process.env, SNATCHY_ZIP: zip, SNATCHY_DEST: dest } });
-  if (r.status !== 0) throw new Error(`Entpacken fehlgeschlagen: ${zip}`);
+  if (r.status !== 0) throw new Error(`Extraction failed:${zip}`);
 };
 
-// Minimaler Glob: "*" steht für genau ein Pfadsegment bzw. einen Namensteil.
+// Minimal glob: "*" stands for exactly one path segment or name part.
 const globFiles = (base, pattern) => {
   const parts = pattern.split("/");
   let current = [base];
@@ -118,20 +118,20 @@ const globFiles = (base, pattern) => {
 const fetchSource = async (src) => {
   const targets = src.files.filter((f) => f.to !== ".").map((f) => path.join(BIN_DIR, f.to));
   if (!FORCE && targets.every((t) => fs.existsSync(t))) {
-    console.log(`[${src.name}] vorhanden, übersprungen (--force zum Ersetzen)`);
+    console.log(`[${src.name}] already present, skipped (--force to replace)`);
     return;
   }
 
   const expected = String(src.digest || "").replace(/^sha256:/, "").toLowerCase();
-  if (!/^[0-9a-f]{64}$/.test(expected)) throw new Error(`[${src.name}] keine feste Prüfsumme hinterlegt, Abbruch`);
+  if (!/^[0-9a-f]{64}$/.test(expected)) throw new Error(`[${src.name}] no pinned checksum set, aborting`);
 
   const file = path.join(TMP_DIR, src.asset);
-  console.log(`[${src.name}] lade ${src.tag}: ${src.asset}`);
+  console.log(`[${src.name}] downloading ${src.tag}: ${src.asset}`);
   await download(releaseUrl(src), file);
   const actual = sha256(file);
   if (actual !== expected) {
     fs.rmSync(file, { force: true });
-    throw new Error(`[${src.name}] SHA-256 stimmt nicht: ${actual} != ${expected}`);
+    throw new Error(`[${src.name}] SHA-256 mismatch:${actual} != ${expected}`);
   }
 
   const isZip = src.asset.toLowerCase().endsWith(".zip");
@@ -140,7 +140,7 @@ const fetchSource = async (src) => {
 
   for (const f of src.files) {
     const matches = globFiles(sourceDir, f.from);
-    if (!matches.length) throw new Error(`[${src.name}] ${f.from} nicht im Archiv gefunden`);
+    if (!matches.length) throw new Error(`[${src.name}] ${f.from} not found in archive`);
     for (const m of matches) {
       const dest = f.to === "." ? path.join(BIN_DIR, path.basename(m)) : path.join(BIN_DIR, f.to);
       fs.copyFileSync(m, dest);
@@ -149,29 +149,29 @@ const fetchSource = async (src) => {
   console.log(`[${src.name}] ok`);
 };
 
-// Hilfsmodus: zeigt die neuesten Versionen der Quellen mit der Prüfsumme der GitHub-API.
-// Diese Werte NICHT blind übernehmen, sondern mit der Prüfsummen-Datei des Herstellers vergleichen.
+// Helper mode: shows the latest versions of the sources with the checksum from the GitHub API.
+// Do NOT adopt these values blindly, compare them with the vendor's checksum file.
 const showLatest = async () => {
   const headers = { "User-Agent": "snatchy-build", Accept: "application/vnd.github+json" };
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   if (token) headers.Authorization = `Bearer ${token}`;
   for (const src of SOURCES.filter((s) => s.name !== "aria2")) {
-    // FFmpeg-Builds: "latest" ist ein beweglicher Tag, gepinnt wird ein datierter autobuild-Tag.
+    // FFmpeg builds: "latest" is a moving tag, a dated autobuild tag is pinned.
     const isFfmpeg = src.name === "ffmpeg";
     const res = await fetch(
       `https://api.github.com/repos/${src.repo}/releases${isFfmpeg ? "?per_page=10" : "/latest"}`,
       { headers }
     );
-    if (!res.ok) { console.log(`[${src.name}] GitHub-API ${res.status}`); continue; }
+    if (!res.ok) { console.log(`[${src.name}] GitHub API ${res.status}`); continue; }
     const data = await res.json();
     const release = isFfmpeg ? data.find((r) => /^autobuild-/.test(r.tag_name)) : data;
-    if (!release) { console.log(`[${src.name}] kein datierter Release gefunden`); continue; }
+    if (!release) { console.log(`[${src.name}] no dated release found`); continue; }
     const nameRe = src.name === "ffmpeg" ? /win64-gpl-shared\.zip$/ : null;
     const asset = release.assets.find((a) => (nameRe ? nameRe.test(a.name) && !/master-latest/.test(a.name) : a.name === src.asset));
-    console.log(`[${src.name}] aktuell: ${release.tag_name}${asset ? `  asset=${asset.name}  digest=${asset.digest || "(keiner)"}` : "  (Asset nicht gefunden)"}`);
-    console.log(`           aktuell eingetragen: ${src.tag}  ${src.digest}`);
+    console.log(`[${src.name}] latest:${release.tag_name}${asset ? `  asset=${asset.name}  digest=${asset.digest || "(none)"}` : "  (asset not found)"}`);
+    console.log(`           currently pinned:${src.tag}  ${src.digest}`);
   }
-  console.log("Hinweis FFmpeg: für einen datierten Tag (autobuild-...) die Release-Liste von yt-dlp/FFmpeg-Builds ansehen; \"latest\" ändert sich täglich.");
+  console.log("Note on FFmpeg: for a dated tag (autobuild-...) see the release list of yt-dlp/FFmpeg-Builds; \"latest\" changes daily.");
 };
 
 const main = async () => {
@@ -180,7 +180,7 @@ const main = async () => {
     return;
   }
   if (process.platform !== "win32") {
-    console.log("fetch-binaries: nur für Windows-Builds nötig, übersprungen.");
+    console.log("fetch-binaries: only needed for Windows builds, skipped.");
     return;
   }
   fs.mkdirSync(BIN_DIR, { recursive: true });
@@ -190,7 +190,7 @@ const main = async () => {
   } finally {
     fs.rmSync(TMP_DIR, { recursive: true, force: true });
   }
-  console.log(`Fertig: ${BIN_DIR}`);
+  console.log(`Done:${BIN_DIR}`);
 };
 
 main().catch((err) => {
